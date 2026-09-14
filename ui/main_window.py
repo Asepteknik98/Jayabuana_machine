@@ -10,6 +10,7 @@ from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
 from core.safe_envelope import SafeEnvelopeEngine
+from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
 from ui.widgets.precision_panel import PrecisionPanel
 from ui.widgets.gpr_panel import GPRPanel
 from modules.safedig_vision.gpr_simulator import GPRSimulator
@@ -91,6 +92,7 @@ class MainWindow(QMainWindow):
         self.excavator_view = UndergroundView()
         self.utility_detector = UtilityDetector()
         self.envelope_engine = SafeEnvelopeEngine()
+        self.design_conflict_engine = DesignConflictEngine()
         self.gpr_panel.state_changed.connect(self._update_utility)
         self.excavator_view.geometry_changed.connect(self._update_utility)
         self._update_utility()
@@ -143,8 +145,13 @@ class MainWindow(QMainWindow):
 
     def _update_utility(self, _event=None) -> None:
         bucket = self.excavator_view.bucket_position
-        machine = MachineState(bucket.x_m, -bucket.depth_m)
+        geometry = self.excavator_view.geometry
+        machine = MachineState(bucket.x_m, -bucket.depth_m, geometry.target_depth_m,
+                               geometry.target_width_m, geometry.target_slope_percent,
+                               geometry.current_depth_m, DEFAULT_TRENCH_CENTER_X_M)
         self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
         self.safe_dig_state = self.envelope_engine.update(self.safe_dig_state)
+        self.safe_dig_state = self.design_conflict_engine.update(self.safe_dig_state)
+        self.precision_panel.update_conflict(self.safe_dig_state.design_conflict)
         self.gpr_panel.display_utility(self.safe_dig_state)
         self.excavator_view.set_state(self.safe_dig_state)

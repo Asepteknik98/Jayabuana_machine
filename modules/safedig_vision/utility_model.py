@@ -20,6 +20,11 @@ class UtilityType(str, Enum):
 class MachineState:
     bucket_x_m: float
     bucket_z_m: float
+    target_depth_m: float | None = None
+    target_width_m: float | None = None
+    target_slope_percent: float | None = None
+    current_depth_m: float | None = None
+    excavation_center_x_m: float | None = None
 
 
 @dataclass(frozen=True)

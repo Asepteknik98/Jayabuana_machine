@@ -10,7 +10,7 @@ class PrecisionPanel(QFrame):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("panel")
-        self.setMinimumHeight(190)
+        self.setMinimumHeight(250)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(4)
@@ -28,7 +28,7 @@ class PrecisionPanel(QFrame):
         self.values: dict[str, QLabel] = {}
         for row, name in enumerate((
             "Target Depth", "Current Depth", "Remaining", "Target Width",
-            "Target Slope", "Bucket Speed",
+            "Target Slope", "Bucket Speed", "Design Conflict", "Planned Clearance",
         )):
             caption = QLabel(name)
             caption.setObjectName("muted")
@@ -39,7 +39,20 @@ class PrecisionPanel(QFrame):
             readings.addWidget(value, row, 1)
             self.values[name] = value
         layout.addLayout(readings)
+        self.conflict_info = QLabel()
+        self.conflict_info.setObjectName("muted")
+        self.conflict_info.setWordWrap(True)
+        layout.addWidget(self.conflict_info)
         layout.addStretch()
+
+    def update_conflict(self, result) -> None:
+        self.values["Design Conflict"].setText({"NO_CONFLICT":"NO", "POTENTIAL_CONFLICT":"POTENTIAL",
+                                              "DESIGN_CONFLICT":"YES", "UNKNOWN":"UNKNOWN / VERIFY"}[result.status.value])
+        value=result.planned_clearance_m
+        self.values["Planned Clearance"].setText(f"{value:+.2f} m" if value is not None else "--")
+        self.conflict_info.setText("SECONDARY VERIFICATION REQUIRED" if result.verification_required
+                                   else "TARGET / UTILITY CONFLICT" if result.conflict_detected else "")
+        self.conflict_info.setToolTip(result.reason)
 
     def update_geometry(self, geometry: DigGeometry) -> None:
         readings = {
