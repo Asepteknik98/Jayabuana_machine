@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
+from ui.widgets.excavator_view import ExcavatorView
 
 
 def make_panel(title: str, subtitle: str, message: str) -> QFrame:
@@ -72,10 +73,15 @@ class MainWindow(QMainWindow):
             "SafeDig Guardian", "Operator Fatigue & Attention Intelligence",
             "GUARDIAN PLACEHOLDER",
         ), 2, 0)
-        grid.addWidget(make_panel(
-            "Excavation View", "2D workspace",
-            "EXCAVATION VIEW PLACEHOLDER",
-        ), 0, 1, 3, 1)
+        excavation_panel = make_panel(
+            "Excavation View", "2D workspace • SIMULATED MOTION", "",
+        )
+        excavation_layout = excavation_panel.layout()
+        placeholder = excavation_layout.takeAt(2).widget()
+        placeholder.deleteLater()
+        self.excavator_view = ExcavatorView()
+        excavation_layout.addWidget(self.excavator_view, 1)
+        grid.addWidget(excavation_panel, 0, 1, 3, 1)
 
         risk_panel = make_panel(
             "Risk Engine", "Static HMI preview", "RISK SCORE",
