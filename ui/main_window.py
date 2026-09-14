@@ -8,6 +8,9 @@ from PySide6.QtWidgets import (
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
 from ui.widgets.excavator_view import ExcavatorView
 from ui.widgets.precision_panel import PrecisionPanel
+from ui.widgets.gpr_panel import GPRPanel
+from modules.safedig_vision.gpr_simulator import GPRSimulator
+from modules.safedig_vision.soil_model import SoilType
 
 
 def make_panel(title: str, subtitle: str, message: str) -> QFrame:
@@ -62,10 +65,13 @@ class MainWindow(QMainWindow):
         grid.setColumnStretch(2, 3)
         for row in range(3):
             grid.setRowStretch(row, 1)
-        grid.addWidget(make_panel(
-            "SafeDig Vision", "Underground Utility Intelligence",
-            "VISION PLACEHOLDER",
-        ), 0, 0)
+        self.gpr_source = GPRSimulator()
+        self.gpr_panel = GPRPanel(self.gpr_source, [
+            (soil.value.replace("_", " ").title(), soil.value) for soil in SoilType
+        ])
+        self.gpr_panel.soil_selected.connect(self.gpr_source.set_soil)
+        grid.addWidget(self.gpr_panel, 0, 0)
+        grid.setRowStretch(0, 3)
         self.precision_panel = PrecisionPanel()
         grid.addWidget(self.precision_panel, 1, 0)
         grid.setRowStretch(1, 2)
@@ -98,7 +104,8 @@ class MainWindow(QMainWindow):
         self.risk_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         risk_layout.addWidget(self.risk_status_label)
         risk_layout.addStretch()
-        grid.addWidget(risk_panel, 0, 2, 3, 1)
+        grid.addWidget(self.gpr_panel.wave, 0, 2)
+        grid.addWidget(risk_panel, 1, 2, 2, 1)
         layout.addLayout(grid, 1)
 
         decision_panel = make_panel(
