@@ -56,6 +56,9 @@ class DecisionEngine:
         offline = (sensor is None or state.sensor_health in (SensorHealth.OFFLINE, SensorHealth.STALE)
                    or sensor.sensor_health in (SensorHealth.OFFLINE, SensorHealth.STALE)
                    or (utility is not None and utility.sensor_health in (SensorHealth.OFFLINE, SensorHealth.STALE)))
+        fusion = state.fusion
+        offline = offline or bool(fusion and (not fusion.vision_valid or not fusion.precision_valid))
+        fatigue_high = bool(fusion and fusion.fatigue_available and "FATIGUE_HIGH" in fusion.context_flags)
         timestamp = risk.timestamp if risk else (sensor.timestamp if sensor else None)
         level = risk.level if risk else None
         known = utility is not None and utility.detected and utility.valid
@@ -94,12 +97,15 @@ class DecisionEngine:
             reason = ("PLANNED EXCAVATION INTERSECTS UTILITY ENVELOPE" if conflict else
                       "BUCKET APPROACHING UTILITY ENVELOPE" if approaching else
                       "ELEVATED RISK: " + risk.primary_risk_driver)
-        elif level == RiskLevel.CAUTION:
+        elif level == RiskLevel.CAUTION or fatigue_high:
             action = DecisionAction.WARN
-            reason = "RISK INCREASING: " + risk.primary_risk_driver
+            reason = ("OPERATOR FATIGUE ELEVATED; CONSIDER PAUSE / OPERATOR CHECK" if fatigue_high
+                      else "RISK INCREASING: " + risk.primary_risk_driver)
         else:
             action = DecisionAction.NORMAL
-            reason = "NO ACTIVE SAFETY CONFLICT IN AVAILABLE INPUTS; FATIGUE NOT AVAILABLE"
+            reason = "NO ACTIVE SAFETY CONFLICT IN AVAILABLE INPUTS"
+        if fatigue_high and action in (DecisionAction.SLOW, DecisionAction.RESTRICT):
+            reason += "; HIGH OPERATOR FATIGUE + UTILITY PROXIMITY"
         result = DecisionState(action, MESSAGES[action], reason, PRIORITY[action], verify,
                                "TOWARD_UTILITY" if action == DecisionAction.RESTRICT else None,
                                GUIDANCE[action], not offline and not weak, timestamp)

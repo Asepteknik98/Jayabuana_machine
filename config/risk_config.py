@@ -12,4 +12,4 @@ VELOCITY_REFERENCE_MPS = 0.30  # SIMULATION REFERENCE ONLY, not an operating lim
 DESIGN_RISKS = {"NO_CONFLICT": 0.0, "POTENTIAL_CONFLICT": 0.55,
                 "DESIGN_CONFLICT": 1.0, "UNKNOWN": 0.40}
 DRIVER_LABELS = {"utility": "UTILITY PROXIMITY", "confidence": "CONFIDENCE / EVIDENCE",
-                 "velocity": "BUCKET VELOCITY", "design": "DESIGN CONFLICT", "fatigue": "FATIGUE"}
+                 "velocity": "BUCKET VELOCITY", "design": "DESIGN CONFLICT", "fatigue": "OPERATOR FATIGUE"}

@@ -1,4 +1,4 @@
-"""Guardian worker lifecycle and GUI-thread delivery; no risk integration."""
+"""Ordered assessment pipeline and independent Guardian worker lifecycle."""
 
 import multiprocessing as mp
 from queue import Empty
@@ -78,3 +78,17 @@ class GuardianController(QObject):
             self._process.close()
             self._queue.close()
             self._process = self._queue = self._stop = None
+
+
+class AssessmentController:
+    """One ordered assessment on the existing update cadence; no additional timer."""
+    def __init__(self, risk_engine, decision_engine):
+        from core.sensor_fusion import SensorFusion
+        self.fusion = SensorFusion()
+        self.risk = risk_engine
+        self.decision = decision_engine
+
+    def update(self, state, now=None):
+        from dataclasses import replace
+        state = replace(state, fusion=self.fusion.fuse(state, now))
+        return self.decision.update(self.risk.update(state))

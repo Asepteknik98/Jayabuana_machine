@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from domain.fusion_state import FusionState
     from domain.operator_state import OperatorState
     from core.decision_engine import DecisionState
     from core.risk_engine import RiskState
@@ -53,6 +54,7 @@ class SafeDigState:
     risk: "RiskState | None" = None
     decision: "DecisionState | None" = None
     operator: "OperatorState | None" = None
+    fusion: "FusionState | None" = None
 
     @classmethod
     def from_sensor(cls, sensor: SensorState | None, now: float) -> "SafeDigState":

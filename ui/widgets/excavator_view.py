@@ -1,5 +1,7 @@
 """Responsive excavator canvas with a lightweight GUI animation timer."""
 
+from time import monotonic
+
 from PySide6.QtCore import QElapsedTimer, QRectF, QTimer, Signal
 from PySide6.QtGui import QHideEvent, QPainter, QPaintEvent, QShowEvent
 from PySide6.QtWidgets import QSizePolicy, QWidget
@@ -20,6 +22,7 @@ class ExcavatorView(QWidget):
         self.elapsed_seconds = 0.0
         self.bucket_position = self._position()
         self.geometry = calculate_geometry(self.bucket_position)
+        self.timestamp = monotonic()
         self._clock = QElapsedTimer()
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -31,6 +34,7 @@ class ExcavatorView(QWidget):
         position = self._position()
         self.geometry = calculate_geometry(position, self.bucket_position, elapsed)
         self.bucket_position = position
+        self.timestamp = monotonic()
         self.geometry_changed.emit(self.geometry)
         self.update()
 

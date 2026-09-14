@@ -1,4 +1,4 @@
-"""Read-only prototype Guardian indicators; no global risk integration."""
+"""Read-only prototype Guardian indicators; fusion connection status."""
 
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QGridLayout,QLabel,QProgressBar
 
@@ -11,6 +11,7 @@ class GuardianPanel(QWidget):
         layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0);layout.setSpacing(4)
         note=QLabel("PROTOTYPE ESTIMATE • CALIBRATION REQUIRED")
         note.setObjectName('muted');note.setWordWrap(True);layout.addWidget(note)
+        self.fusion_label=QLabel("FUSION: WAITING");self.fusion_label.setWordWrap(True);layout.addWidget(self.fusion_label)
         grid=QGridLayout();self.values={}
         for row,name in enumerate(('Eyes','Closure','Prolonged','Blinks (window)','Yawn','Yawn Count','Head Pose','Attention','Fatigue')):
             caption=QLabel(name);caption.setObjectName('muted');grid.addWidget(caption,row,0)
@@ -42,3 +43,6 @@ class GuardianPanel(QWidget):
             bar.setFormat(label+': UNKNOWN' if value is None else label+': %v%')
         confidence='--' if state.fatigue_confidence is None else f'{state.fatigue_confidence:.0%}'
         self.indicator.setText(f'Primary: {state.primary_fatigue_indicator}\nEstimate confidence: {confidence}')
+
+    def display_fusion(self, fusion):
+        self.fusion_label.setText("FUSION: CONNECTED" if fusion.guardian_valid else "FUSION: GUARDIAN DATA UNAVAILABLE")

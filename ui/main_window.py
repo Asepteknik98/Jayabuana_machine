@@ -14,7 +14,7 @@ from core.risk_engine import RiskEngine
 from core.decision_engine import DecisionEngine
 from ui.widgets.status_indicator import StatusIndicator
 from ui.widgets.camera_panel import CameraPanel
-from core.app_controller import GuardianController
+from core.app_controller import GuardianController, AssessmentController
 from ui.widgets.risk_panel import RiskPanel
 from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
@@ -110,8 +110,6 @@ class MainWindow(QMainWindow):
         self.risk_panel = RiskPanel()
         self.risk_score_label = self.risk_panel.score_label
         self.risk_status_label = self.risk_panel.level_label
-        self.gpr_panel.state_changed.connect(self._update_risk)
-        self._update_risk()
         sensor_previews = QTabWidget()
         sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
         sensor_previews.addTab(self.camera_panel.preview, "Operator Camera")
@@ -122,8 +120,11 @@ class MainWindow(QMainWindow):
 
         self.decision_engine = DecisionEngine()
         self.decision_panel = StatusIndicator()
-        self.gpr_panel.state_changed.connect(self._update_decision)
-        self._update_decision()
+        self.assessment_controller = AssessmentController(self.risk_engine, self.decision_engine)
+        self.gpr_panel.state_changed.connect(self._update_assessment)
+        self.excavator_view.geometry_changed.connect(self._assessment_tick)
+        self._last_assessment = 0.0
+        self._update_assessment()
         layout.addWidget(self.decision_panel)
 
         self.setStyleSheet("""
@@ -157,25 +158,32 @@ class MainWindow(QMainWindow):
         machine = MachineState(bucket.x_m, -bucket.depth_m, geometry.target_depth_m,
                                geometry.target_width_m, geometry.target_slope_percent,
                                geometry.current_depth_m, DEFAULT_TRENCH_CENTER_X_M,
-                               geometry.bucket_speed_m_s)
+                               geometry.bucket_speed_m_s, self.excavator_view.timestamp)
+        previous_fusion = self.safe_dig_state.fusion if hasattr(self, "safe_dig_state") else None
         previous_risk = self.safe_dig_state.risk if hasattr(self, "safe_dig_state") else None
         previous_decision = self.safe_dig_state.decision if hasattr(self, "safe_dig_state") else None
         previous_operator = self.safe_dig_state.operator if hasattr(self, "safe_dig_state") else None
         self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
-        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk, decision=previous_decision, operator=previous_operator)
+        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk, decision=previous_decision, operator=previous_operator, fusion=previous_fusion)
         self.safe_dig_state = self.envelope_engine.update(self.safe_dig_state)
         self.safe_dig_state = self.design_conflict_engine.update(self.safe_dig_state)
         self.precision_panel.update_conflict(self.safe_dig_state.design_conflict)
         self.gpr_panel.display_utility(self.safe_dig_state)
         self.excavator_view.set_state(self.safe_dig_state)
 
-    def _update_risk(self, _event=None) -> None:
-        self.safe_dig_state = self.risk_engine.update(self.safe_dig_state)
-        self.risk_panel.display(self.safe_dig_state.risk)
+    def _assessment_tick(self, _event=None) -> None:
+        from time import monotonic
+        if monotonic() - self._last_assessment >= 0.2:
+            self._update_assessment()
 
-    def _update_decision(self, _event=None) -> None:
-        self.safe_dig_state = self.decision_engine.update(self.safe_dig_state)
+    def _update_assessment(self, _event=None) -> None:
+        from time import monotonic
+        self._last_assessment = monotonic()
+        self.safe_dig_state = self.assessment_controller.update(self.safe_dig_state, self._last_assessment)
+        self.risk_panel.display(self.safe_dig_state.risk, self.safe_dig_state.fusion)
         self.decision_panel.display(self.safe_dig_state.decision)
+        self.camera_panel.guardian_panel.display_fusion(self.safe_dig_state.fusion)
+        self.excavator_view.set_state(self.safe_dig_state)
 
     def _update_operator(self, state, frame) -> None:
         self.safe_dig_state = replace(self.safe_dig_state, operator=state)

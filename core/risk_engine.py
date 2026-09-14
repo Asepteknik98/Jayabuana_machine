@@ -54,42 +54,36 @@ class RiskEngine:
         return self._level
 
     def update(self, state: SafeDigState) -> SafeDigState:
-        sensor, utility, envelope, machine = state.sensor, state.utility, state.envelope, state.machine
-        unavailable = RiskState(timestamp=sensor.timestamp if sensor else None)
-        bad_health = (SensorHealth.OFFLINE, SensorHealth.STALE)
-        if (sensor is None or machine is None or state.sensor_health in bad_health
-                or sensor.sensor_health in bad_health
-                or (utility is not None and utility.sensor_health in bad_health)):
+        from core.sensor_fusion import SensorFusion
+        fusion = state.fusion or SensorFusion().fuse(state)
+        return replace(state, fusion=fusion, risk=self.evaluate(fusion))
+
+    def evaluate(self, fusion) -> RiskState:
+        if not fusion.fusion_valid:
             self._level = None
-            return replace(state, risk=unavailable)
-        speed = machine.bucket_speed_mps
-        if (speed is None or not isfinite(speed) or speed < 0
-                or any(not isfinite(v) or not 0 <= v <= 1 for v in
-                       (sensor.confidence, sensor.signal_quality, sensor.anomaly_score))):
+            return RiskState(timestamp=fusion.timestamp)
+        speed = fusion.bucket_speed_mps
+        confidence = fusion.utility_confidence
+        if (speed is None or not isfinite(speed) or speed < 0 or confidence is None
+                or not isfinite(confidence) or not 0 <= confidence <= 1
+                or fusion.signal_quality is None or not isfinite(fusion.signal_quality)):
             self._level = None
-            return replace(state, risk=unavailable)
-        candidate = sensor.anomaly_detected or (utility is not None and utility.detected)
-        confidence = utility.confidence if candidate and utility is not None else sensor.confidence
-        if confidence is None or not isfinite(confidence) or not 0 <= confidence <= 1:
-            self._level = None
-            return replace(state, risk=unavailable)
-        weak = confidence < config.VERIFY_THRESHOLD or SensorHealth.DEGRADED in (
-            state.sensor_health, sensor.sensor_health, utility.sensor_health if utility else state.sensor_health)
+            return RiskState(timestamp=fusion.timestamp)
+        weak = confidence < config.VERIFY_THRESHOLD or fusion.sensor_health == "DEGRADED"
         proximity = 0.0
-        if candidate:
-            if (envelope is None or not envelope.valid or envelope.effective_clearance_m is None
-                    or envelope.distance_to_utility_m is None
-                    or not isfinite(envelope.effective_clearance_m) or envelope.effective_clearance_m <= 0
-                    or not isfinite(envelope.distance_to_utility_m) or envelope.distance_to_utility_m < 0):
+        if fusion.utility_detected:
+            radius, distance = fusion.effective_clearance_m, fusion.utility_distance_m
+            if (radius is None or distance is None or not isfinite(radius) or not isfinite(distance)
+                    or radius <= 0 or distance < 0):
                 self._level = None
-                return replace(state, risk=unavailable)
-            ratio = envelope.distance_to_utility_m / envelope.effective_clearance_m
-            proximity = clamp((config.FAR_DISTANCE_RATIO - ratio) /
+                return RiskState(timestamp=fusion.timestamp)
+            proximity = clamp((config.FAR_DISTANCE_RATIO - distance / radius) /
                               (config.FAR_DISTANCE_RATIO - config.HIGH_DISTANCE_RATIO))
-        evidence = confidence if candidate else 0.0
-        design = state.design_conflict
-        design_key = design.status.value if design is not None and design.valid else "UNKNOWN"
-        conflict = config.DESIGN_RISKS[design_key]
+        evidence = confidence if fusion.utility_detected else 0.0
+        conflict = config.DESIGN_RISKS.get(fusion.design_conflict_status, config.DESIGN_RISKS["UNKNOWN"])
+        fatigue = fusion.fatigue_normalized if fusion.fatigue_available else None
+        if fatigue is not None:
+            fatigue = clamp(fatigue) if isfinite(fatigue) else None
         if weak:
             # Uncertainty is positive evidence of limited knowledge, never zero risk.
             proximity = max(proximity, config.UNCERTAINTY_RISK_FLOOR)
@@ -97,7 +91,7 @@ class RiskEngine:
             conflict = max(conflict, config.UNCERTAINTY_RISK_FLOOR)
         components = {"utility": clamp(proximity), "confidence": clamp(evidence),
                       "velocity": clamp(speed / config.VELOCITY_REFERENCE_MPS),
-                      "design": clamp(conflict), "fatigue": None}
+                      "design": clamp(conflict), "fatigue": fatigue}
         active = {k: config.WEIGHTS[k] for k, v in components.items() if v is not None}
         total_weight = sum(active.values())
         active = {k: w / total_weight for k, w in active.items()}
@@ -107,11 +101,13 @@ class RiskEngine:
         label = config.DRIVER_LABELS[driver]
         if weak and driver in ("utility", "confidence"):
             label = "UNCERTAIN UTILITY DETECTION"
-        verification = weak or bool(design and design.verification_required)
-        result = RiskState(components["utility"], components["confidence"], None,
+        verification = weak or fusion.verification_required
+        result = RiskState(components["utility"], components["confidence"], fatigue,
                            components["velocity"], components["design"], score,
                            self.level_for_score(score), not weak,
-                           min(confidence, sensor.signal_quality), verification, label,
-                           contributions, active, sensor.timestamp, False,
-                           "RISK ESTIMATE DEGRADED" if weak else "RISK ESTIMATE AVAILABLE • FATIGUE N/A")
-        return replace(state, risk=result)
+                           min(confidence, fusion.signal_quality), verification, label,
+                           contributions, active, fusion.timestamp, fatigue is not None,
+                           "RISK ESTIMATE DEGRADED" if weak else
+                           "RISK ESTIMATE AVAILABLE" if fatigue is not None else
+                           "GUARDIAN DATA UNAVAILABLE / FATIGUE N/A")
+        return result

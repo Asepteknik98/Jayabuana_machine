@@ -16,6 +16,7 @@ class RiskPanel(QFrame):
         layout=QVBoxLayout(content);layout.setSpacing(5)
         title=QLabel("MULTIMODAL AI RISK ENGINE");title.setWordWrap(True)
         title.setObjectName("panelTitle");layout.addWidget(title)
+        self.fusion_label=QLabel();self.fusion_label.setWordWrap(True);layout.addWidget(self.fusion_label)
         self.score_label=QLabel("-- / 100");self.score_label.setObjectName("riskScore")
         layout.addWidget(self.score_label)
         self.level_label=QLabel("UNAVAILABLE");layout.addWidget(self.level_label)
@@ -32,7 +33,13 @@ class RiskPanel(QFrame):
         self.verification_label=QLabel();self.verification_label.setWordWrap(True)
         self.verification_label.setObjectName("muted");layout.addWidget(self.verification_label)
 
-    def display(self, risk: RiskState) -> None:
+    def display(self, risk: RiskState, fusion=None) -> None:
+        if fusion is not None:
+            statuses = []
+            for name in ("vision", "precision", "guardian"):
+                status = "STALE" if name.upper() + "_STALE" in fusion.context_flags else "VALID" if getattr(fusion, name + "_valid") else "UNAVAILABLE"
+                statuses.append(f"{name.title()}: {status}")
+            self.fusion_label.setText(" | ".join(statuses) + f"\nFusion Confidence: {fusion.fusion_confidence}")
         self.score_label.setText(f"{risk.total_score} / 100" if risk.total_score is not None else "-- / 100")
         self.level_label.setText(risk.level.value if risk.level else "UNAVAILABLE")
         color=RISK_COLORS.get(risk.level.value if risk.level else "",'#8294a3')

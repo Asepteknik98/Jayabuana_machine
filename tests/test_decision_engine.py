@@ -1,4 +1,4 @@
-﻿from dataclasses import replace
+from dataclasses import replace
 import unittest
 from adapters.sensor_source import SafeDigState,SensorHealth
 from core.decision_engine import DecisionEngine,DecisionAction,PRIORITY
@@ -53,3 +53,9 @@ class DecisionTests(unittest.TestCase):
   e=DecisionEngine();e.update(self.state(RiskLevel.CRITICAL,EnvelopeStatus.INSIDE))
   d=e.update(replace(self.state(),sensor_health=SensorHealth.OFFLINE)).decision
   self.assertEqual(d.action,DecisionAction.VERIFY);self.assertIsNone(d.restrict_direction)
+
+ def test_fatigue_warning_from_fusion(self):
+  from domain.fusion_state import FusionState
+  s=replace(self.state(),fusion=FusionState(timestamp=6,vision_valid=True,precision_valid=True,
+      fatigue_available=True,context_flags=frozenset({"FATIGUE_HIGH"})))
+  self.assertEqual(self.action(s),DecisionAction.WARN)

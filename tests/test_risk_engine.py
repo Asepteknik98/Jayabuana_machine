@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 import unittest
+from time import monotonic
 
 from adapters.sensor_source import SafeDigState,SensorHealth
 from core.risk_engine import RiskEngine,RiskLevel
@@ -13,12 +14,12 @@ from modules.safedig_precision.design_conflict import DesignConflictState,Confli
 
 class RiskEngineTests(unittest.TestCase):
     def state(self,distance=1.5,speed=0,design=ConflictStatus.NO_CONFLICT,confidence=0.9):
-        return SafeDigState(GPRSimulator().read(6),SensorHealth.VALID,'',
-            utility=UtilityState(detected=True,valid=True,confidence=confidence,sensor_health=SensorHealth.VALID),
-            machine=MachineState(0,0,bucket_speed_mps=speed),
+        return SafeDigState(GPRSimulator().read(monotonic()),SensorHealth.VALID,'',
+            utility=UtilityState(detected=True,valid=True,confidence=confidence,sensor_health=SensorHealth.VALID,timestamp=monotonic()),
+            machine=MachineState(0,0,bucket_speed_mps=speed,timestamp=monotonic()),
             envelope=EnvelopeState(effective_clearance_m=0.35,distance_to_utility_m=distance,valid=True,
-                                   status=EnvelopeStatus.CLEAR),
-            design_conflict=DesignConflictState(status=design,valid=True,verification_required=False))
+                                   status=EnvelopeStatus.CLEAR,timestamp=monotonic()),
+            design_conflict=DesignConflictState(status=design,valid=True,verification_required=False,timestamp=monotonic()))
 
     def risk(self,**kwargs):
         return RiskEngine().update(self.state(**kwargs)).risk

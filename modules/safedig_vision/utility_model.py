@@ -26,6 +26,7 @@ class MachineState:
     current_depth_m: float | None = None
     excavation_center_x_m: float | None = None
     bucket_speed_mps: float | None = None
+    timestamp: float | None = None
 
 
 @dataclass(frozen=True)

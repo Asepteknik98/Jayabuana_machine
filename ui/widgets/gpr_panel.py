@@ -1,6 +1,7 @@
 """Read a common source at 5 Hz; display prepared sensor state."""
 
-from PySide6.QtCore import QElapsedTimer, QTimer, Signal
+from time import monotonic
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QComboBox, QFrame, QGridLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from adapters.sensor_source import SafeDigState, SensorHealth, SensorSource
@@ -60,8 +61,6 @@ class GPRPanel(QFrame):
         self.action_label.setObjectName("muted")
         self.action_label.setWordWrap(True)
         layout.addWidget(self.action_label)
-        self._clock = QElapsedTimer()
-        self._clock.start()
         self._timer = QTimer(self)
         self._timer.setInterval(200)
         self._timer.timeout.connect(self.refresh)
@@ -73,7 +72,7 @@ class GPRPanel(QFrame):
         self.refresh()
 
     def refresh(self) -> None:
-        now = self._clock.elapsed() / 1000.0
+        now = monotonic()
         self.state = SafeDigState.from_sensor(self.source.read(now), now)
         sensor = self.state.sensor
         available = sensor is not None and self.state.sensor_health not in (SensorHealth.OFFLINE, SensorHealth.STALE)
