@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.sensor_source import SensorHealth
+from config.envelope_config import BASE_SAFE_CLEARANCE_M
 
 
 class UtilityType(str, Enum):
@@ -31,7 +32,7 @@ class UtilityState:
     direction: str = "UNKNOWN"
     confidence: float | None = None
     distance_to_bucket_m: float | None = None
-    safe_clearance_m: float = 0.30
+    safe_clearance_m: float = BASE_SAFE_CLEARANCE_M
     sensor_health: SensorHealth = SensorHealth.OFFLINE
     valid: bool = False
     timestamp: float | None = None

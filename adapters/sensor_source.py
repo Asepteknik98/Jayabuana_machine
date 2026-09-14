@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from core.safe_envelope import EnvelopeState
     from modules.safedig_vision.utility_model import MachineState, UtilityState
 
 
@@ -43,6 +44,7 @@ class SafeDigState:
     action_info: str = ""
     utility: "UtilityState | None" = None
     machine: "MachineState | None" = None
+    envelope: "EnvelopeState | None" = None
 
     @classmethod
     def from_sensor(cls, sensor: SensorState | None, now: float) -> "SafeDigState":
