@@ -41,18 +41,22 @@ class FatigueEngine:
 
     def assess(self, eyes, yawn, pose, attention, timestamp):
         if (not eyes.valid or eyes.eye_closed_ratio_window is None
-                or not isfinite(eyes.eye_closed_ratio_window) or not isfinite(timestamp)):
+                or not isfinite(eyes.eye_closed_ratio_window) or not 0 <= eyes.eye_closed_ratio_window <= 1
+                or not isfinite(timestamp)):
             self._last = self._score = None
             return FatigueResult(timestamp=timestamp)
+        yawn_valid = yawn.valid and isfinite(yawn.yawn_count_window) and yawn.yawn_count_window >= 0
+        attention_valid = (attention.valid and attention.attention_score is not None
+                           and isfinite(attention.attention_score) and 0 <= attention.attention_score <= 1)
         components = {
             "eye_temporal": clamp(eyes.eye_closed_ratio_window/cfg.EYE_RATIO_FULL_RISK),
             "prolonged_closure": float(eyes.prolonged_eye_closure),
             "yawn": max(clamp(yawn.yawn_count_window/cfg.YAWN_FULL_COUNT),
-                        cfg.YAWN_ACTIVE_COMPONENT if yawn.yawn_detected else 0.0) if yawn.valid else None,
-            "attention": clamp(1-attention.attention_score) if attention.valid and attention.attention_score is not None else None,
-            "head_context": clamp(1-attention.attention_score) if pose.valid and attention.valid
-                            and attention.attention_score is not None and pose.head_pose_status != "FORWARD" else
-                            0.0 if pose.valid and attention.valid else None,
+                        cfg.YAWN_ACTIVE_COMPONENT if yawn.yawn_detected else 0.0) if yawn_valid else None,
+            "attention": clamp(1-attention.attention_score) if attention_valid else None,
+            "head_context": clamp(1-attention.attention_score) if pose.valid and attention_valid
+                            and pose.head_pose_status != "FORWARD" else
+                            0.0 if pose.valid and attention_valid else None,
         }
         active = {key: cfg.FATIGUE_WEIGHTS[key] for key, value in components.items() if value is not None}
         total = sum(active.values())

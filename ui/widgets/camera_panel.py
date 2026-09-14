@@ -5,6 +5,7 @@ from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 from adapters.sensor_source import SensorHealth
 from domain.operator_state import OperatorState
+from ui.widgets.guardian_panel import GuardianPanel
 
 
 class CameraPreview(QWidget):
@@ -14,6 +15,7 @@ class CameraPreview(QWidget):
         self.image = QImage()
         self.status_text = "CAMERA OFFLINE"
         self.detail_text = "Operator analysis: UNAVAILABLE"
+        self.analysis_text = "Fatigue: UNKNOWN | Attention: UNKNOWN"
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -30,7 +32,7 @@ class CameraPreview(QWidget):
         painter.fillRect(0, self.height()-62, self.width(), 62, Qt.GlobalColor.black)
         painter.drawText(8, self.height()-46, self.status_text)
         painter.drawText(8, self.height()-29, self.detail_text)
-        painter.drawText(8, self.height()-12, "Fatigue / Attention: NOT YET ANALYZED")
+        painter.drawText(8, self.height()-12, self.analysis_text)
         painter.end()
 
 
@@ -50,8 +52,7 @@ class CameraPanel(QFrame):
         self.status_label=QLabel();self.status_label.setWordWrap(True);layout.addWidget(self.status_label)
         self.face_label=QLabel();self.face_label.setWordWrap(True);layout.addWidget(self.face_label)
         self.analysis_label=QLabel();self.analysis_label.setWordWrap(True);layout.addWidget(self.analysis_label)
-        pending=QLabel("Fatigue: NOT YET ANALYZED\nAttention: NOT YET ANALYZED")
-        pending.setObjectName("muted");layout.addWidget(pending)
+        self.guardian_panel=GuardianPanel();layout.addWidget(self.guardian_panel)
         self.retry_button=QPushButton("RETRY CAMERA");self.retry_button.clicked.connect(self.retry_requested)
         outer.addWidget(self.retry_button)
         self.display(OperatorState(),None)
@@ -67,6 +68,10 @@ class CameraPanel(QFrame):
         self.analysis_label.setText("Operator Analysis: "+state.analysis_status)
         self.preview.status_text = self.status_label.text() + " • REAL CAMERA INPUT"
         self.preview.detail_text = f"Face: {state.face_status} | Count: {count}"
+        self.guardian_panel.display(state)
+        fatigue=f'{state.fatigue_score:.0f} {state.fatigue_level}' if state.fatigue_valid else 'UNKNOWN'
+        attention=f'{state.attention_score:.0%}' if state.attention_score is not None else 'UNKNOWN'
+        self.preview.analysis_text=f'Fatigue: {fatigue} | Attention: {attention}'
         if online and rgb_frame is not None:
             height,width,_=rgb_frame.shape
             self.preview.image=QImage(rgb_frame.data,width,height,rgb_frame.strides[0],QImage.Format.Format_RGB888).copy()
