@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
 from ui.widgets.excavator_view import ExcavatorView
+from ui.widgets.precision_panel import PrecisionPanel
 
 
 def make_panel(title: str, subtitle: str, message: str) -> QFrame:
@@ -65,10 +66,9 @@ class MainWindow(QMainWindow):
             "SafeDig Vision", "Underground Utility Intelligence",
             "VISION PLACEHOLDER",
         ), 0, 0)
-        grid.addWidget(make_panel(
-            "SafeDig Precision", "AI Digging Depth & Geometry Assistant",
-            "PRECISION PLACEHOLDER",
-        ), 1, 0)
+        self.precision_panel = PrecisionPanel()
+        grid.addWidget(self.precision_panel, 1, 0)
+        grid.setRowStretch(1, 2)
         grid.addWidget(make_panel(
             "SafeDig Guardian", "Operator Fatigue & Attention Intelligence",
             "GUARDIAN PLACEHOLDER",
@@ -80,6 +80,8 @@ class MainWindow(QMainWindow):
         placeholder = excavation_layout.takeAt(2).widget()
         placeholder.deleteLater()
         self.excavator_view = ExcavatorView()
+        self.excavator_view.geometry_changed.connect(self.precision_panel.update_geometry)
+        self.precision_panel.update_geometry(self.excavator_view.geometry)
         excavation_layout.addWidget(self.excavator_view, 1)
         grid.addWidget(excavation_panel, 0, 1, 3, 1)
 

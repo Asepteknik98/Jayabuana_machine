@@ -10,6 +10,7 @@ SCENE_WIDTH = 800
 SCENE_HEIGHT = 520
 GROUND_Y = 330
 CYCLE_SECONDS = 8.0
+BUCKET_TIP = (43.0, 48.0)
 
 
 def excavator_pose(seconds: float) -> tuple[QPointF, QPointF, QPointF, float]:
@@ -77,7 +78,7 @@ def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float) -> None:
     painter.setPen(QPen(QColor("#e5c576"), 3))
     painter.setBrush(QColor("#99752d"))
     painter.drawPolygon(QPolygonF([
-        QPointF(-8, -6), QPointF(25, 5), QPointF(43, 48),
+        QPointF(-8, -6), QPointF(25, 5), QPointF(*BUCKET_TIP),
         QPointF(-20, 43), QPointF(-34, 24),
     ]))
     painter.restore()
