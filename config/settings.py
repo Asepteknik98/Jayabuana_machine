@@ -1,0 +1,6 @@
+"""Base HMI display settings."""
+
+APP_NAME = "XCMG SafeDig AI Copilot"
+TAGLINE = "SEE BELOW • DIG RIGHT • STAY ALERT"
+WINDOW_SIZE = (1600, 900)
+MINIMUM_SIZE = (960, 720)
