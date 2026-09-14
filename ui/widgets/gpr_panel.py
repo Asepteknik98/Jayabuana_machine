@@ -9,6 +9,7 @@ from visualization.gpr_wave import GPRWave
 
 class GPRPanel(QFrame):
     soil_selected = Signal(str)
+    state_changed = Signal(object)
 
     def __init__(self, source: SensorSource, soil_options: list[tuple[str, str]]) -> None:
         super().__init__()
@@ -41,10 +42,13 @@ class GPRPanel(QFrame):
         self.wave = GPRWave()
         grid = QGridLayout()
         self.values = {}
-        for row, name in enumerate(("Signal Quality", "Confidence", "Anomaly Score", "Sensor Health")):
+        for row, name in enumerate(("Signal Quality", "Confidence", "Anomaly Score", "Sensor Health",
+                                    "Utility Status", "Estimated Type", "Estimated Depth",
+                                    "Distance From Bucket", "Detection Confidence", "Confidence Status")):
             label = QLabel(name)
             label.setObjectName("muted")
             value = QLabel()
+            value.setWordWrap(True)
             grid.addWidget(label, row, 0)
             grid.addWidget(value, row, 1)
             self.values[name] = value
@@ -81,6 +85,20 @@ class GPRPanel(QFrame):
         self.action_label.setText(self.state.action_info)
         self.wave.samples = sensor.radargram if available else ()
         self.wave.update()
+        self.state_changed.emit(self.state)
+
+    def display_utility(self, state: SafeDigState) -> None:
+        utility = state.utility
+        if utility is None:
+            return
+        self.values["Utility Status"].setText(utility.status)
+        self.values["Estimated Type"].setText(utility.type_label)
+        for name, value in (("Estimated Depth", utility.estimated_depth_m),
+                            ("Distance From Bucket", utility.distance_to_bucket_m)):
+            self.values[name].setText(f"{value:.2f} m" if value is not None else "--")
+        self.values["Detection Confidence"].setText(f"{utility.confidence:.0%}" if utility.confidence is not None else "--")
+        self.values["Confidence Status"].setText(utility.confidence_status)
+        self.action_label.setText(utility.verification_info)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

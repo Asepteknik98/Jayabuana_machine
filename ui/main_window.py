@@ -6,7 +6,9 @@ from PySide6.QtWidgets import (
 )
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
-from ui.widgets.excavator_view import ExcavatorView
+from ui.widgets.underground_view import UndergroundView
+from modules.safedig_vision.utility_detector import UtilityDetector
+from modules.safedig_vision.utility_model import MachineState
 from ui.widgets.precision_panel import PrecisionPanel
 from ui.widgets.gpr_panel import GPRPanel
 from modules.safedig_vision.gpr_simulator import GPRSimulator
@@ -85,7 +87,11 @@ class MainWindow(QMainWindow):
         excavation_layout = excavation_panel.layout()
         placeholder = excavation_layout.takeAt(2).widget()
         placeholder.deleteLater()
-        self.excavator_view = ExcavatorView()
+        self.excavator_view = UndergroundView()
+        self.utility_detector = UtilityDetector()
+        self.gpr_panel.state_changed.connect(self._update_utility)
+        self.excavator_view.geometry_changed.connect(self._update_utility)
+        self._update_utility()
         self.excavator_view.geometry_changed.connect(self.precision_panel.update_geometry)
         self.precision_panel.update_geometry(self.excavator_view.geometry)
         excavation_layout.addWidget(self.excavator_view, 1)
@@ -132,3 +138,10 @@ class MainWindow(QMainWindow):
                 border: 1px solid #287659; border-radius: 6px;
                 padding: 12px; font-size: 22px; font-weight: 700; }
         """)
+
+    def _update_utility(self, _event=None) -> None:
+        bucket = self.excavator_view.bucket_position
+        machine = MachineState(bucket.x_m, -bucket.depth_m)
+        self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
+        self.gpr_panel.display_utility(self.safe_dig_state)
+        self.excavator_view.set_state(self.safe_dig_state)

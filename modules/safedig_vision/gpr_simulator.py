@@ -6,6 +6,8 @@ from adapters.sensor_source import SensorHealth, SensorState
 from modules.safedig_vision.soil_model import SOIL_PRESETS, SoilType
 
 ANOMALY_DEPTH_M = 1.32
+_TRUE_UTILITY_X_M = 6.5
+_DEMO_RESPONSE_PROFILE = "NARROW_CONDUIT"
 MAX_DEPTH_M = 2.0
 SCAN_PERIOD_SECONDS = 12.0
 ANOMALY_THRESHOLD = 0.55
@@ -47,4 +49,8 @@ class GPRSimulator:
             strength, anomaly, anomaly >= ANOMALY_THRESHOLD,
             SensorHealth.VALID if soil.signal_quality >= DEGRADED_QUALITY else SensorHealth.DEGRADED,
             timestamp, tuple(rows),
+            # Stable soil-dependent measurement error; truth stays in simulator.
+            estimated_x_m=_TRUE_UTILITY_X_M + 0.04 * (1 - soil.signal_quality),
+            estimated_z_m=-(ANOMALY_DEPTH_M + 0.02 + 0.05 * (1 - soil.signal_quality)),
+            response_profile=_DEMO_RESPONSE_PROFILE,
         )

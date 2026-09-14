@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from modules.safedig_vision.utility_model import MachineState, UtilityState
 
 
 class SensorHealth(str, Enum):
@@ -23,6 +26,9 @@ class SensorState:
     sensor_health: SensorHealth
     timestamp: float  # Seconds in the sampling clock supplied to read().
     radargram: tuple[tuple[float, ...], ...]
+    estimated_x_m: float | None = None
+    estimated_z_m: float | None = None
+    response_profile: str = "UNKNOWN"
 
 
 class SensorSource(Protocol):
@@ -35,6 +41,8 @@ class SafeDigState:
     sensor_health: SensorHealth
     status: str
     action_info: str = ""
+    utility: "UtilityState | None" = None
+    machine: "MachineState | None" = None
 
     @classmethod
     def from_sensor(cls, sensor: SensorState | None, now: float) -> "SafeDigState":
