@@ -11,6 +11,8 @@ from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
 from core.safe_envelope import SafeEnvelopeEngine
 from core.risk_engine import RiskEngine
+from core.decision_engine import DecisionEngine
+from ui.widgets.status_indicator import StatusIndicator
 from ui.widgets.risk_panel import RiskPanel
 from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
@@ -114,11 +116,11 @@ class MainWindow(QMainWindow):
         grid.addWidget(self.risk_panel, 1, 2, 2, 1)
         layout.addLayout(grid, 1)
 
-        decision_panel = make_panel(
-            "AI Decision & Assistance", "DISPLAY / ALERT / ASSIST",
-            "AI DECISION PLACEHOLDER",
-        )
-        layout.addWidget(decision_panel)
+        self.decision_engine = DecisionEngine()
+        self.decision_panel = StatusIndicator()
+        self.gpr_panel.state_changed.connect(self._update_decision)
+        self._update_decision()
+        layout.addWidget(self.decision_panel)
 
         self.setStyleSheet("""
             QMainWindow, QWidget { background: #091421; color: #dfebf5;
@@ -147,8 +149,9 @@ class MainWindow(QMainWindow):
                                geometry.current_depth_m, DEFAULT_TRENCH_CENTER_X_M,
                                geometry.bucket_speed_m_s)
         previous_risk = self.safe_dig_state.risk if hasattr(self, "safe_dig_state") else None
+        previous_decision = self.safe_dig_state.decision if hasattr(self, "safe_dig_state") else None
         self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
-        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk)
+        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk, decision=previous_decision)
         self.safe_dig_state = self.envelope_engine.update(self.safe_dig_state)
         self.safe_dig_state = self.design_conflict_engine.update(self.safe_dig_state)
         self.precision_panel.update_conflict(self.safe_dig_state.design_conflict)
@@ -158,3 +161,7 @@ class MainWindow(QMainWindow):
     def _update_risk(self, _event=None) -> None:
         self.safe_dig_state = self.risk_engine.update(self.safe_dig_state)
         self.risk_panel.display(self.safe_dig_state.risk)
+
+    def _update_decision(self, _event=None) -> None:
+        self.safe_dig_state = self.decision_engine.update(self.safe_dig_state)
+        self.decision_panel.display(self.safe_dig_state.decision)
