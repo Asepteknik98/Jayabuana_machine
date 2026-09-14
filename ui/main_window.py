@@ -10,6 +10,9 @@ from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
 from core.safe_envelope import SafeEnvelopeEngine
+from core.risk_engine import RiskEngine
+from ui.widgets.risk_panel import RiskPanel
+from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
 from ui.widgets.precision_panel import PrecisionPanel
 from ui.widgets.gpr_panel import GPRPanel
@@ -93,6 +96,7 @@ class MainWindow(QMainWindow):
         self.utility_detector = UtilityDetector()
         self.envelope_engine = SafeEnvelopeEngine()
         self.design_conflict_engine = DesignConflictEngine()
+        self.risk_engine = RiskEngine()
         self.gpr_panel.state_changed.connect(self._update_utility)
         self.excavator_view.geometry_changed.connect(self._update_utility)
         self._update_utility()
@@ -101,21 +105,13 @@ class MainWindow(QMainWindow):
         excavation_layout.addWidget(self.excavator_view, 1)
         grid.addWidget(excavation_panel, 0, 1, 3, 1)
 
-        risk_panel = make_panel(
-            "Risk Engine", "Static HMI preview", "RISK SCORE",
-        )
-        risk_layout = risk_panel.layout()
-        self.risk_score_label = QLabel("0 / 100")
-        self.risk_score_label.setObjectName("riskScore")
-        self.risk_score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        risk_layout.addWidget(self.risk_score_label)
-        self.risk_status_label = QLabel("SAFE")
-        self.risk_status_label.setObjectName("safeStatus")
-        self.risk_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        risk_layout.addWidget(self.risk_status_label)
-        risk_layout.addStretch()
+        self.risk_panel = RiskPanel()
+        self.risk_score_label = self.risk_panel.score_label
+        self.risk_status_label = self.risk_panel.level_label
+        self.gpr_panel.state_changed.connect(self._update_risk)
+        self._update_risk()
         grid.addWidget(self.gpr_panel.wave, 0, 2)
-        grid.addWidget(risk_panel, 1, 2, 2, 1)
+        grid.addWidget(self.risk_panel, 1, 2, 2, 1)
         layout.addLayout(grid, 1)
 
         decision_panel = make_panel(
@@ -148,10 +144,17 @@ class MainWindow(QMainWindow):
         geometry = self.excavator_view.geometry
         machine = MachineState(bucket.x_m, -bucket.depth_m, geometry.target_depth_m,
                                geometry.target_width_m, geometry.target_slope_percent,
-                               geometry.current_depth_m, DEFAULT_TRENCH_CENTER_X_M)
+                               geometry.current_depth_m, DEFAULT_TRENCH_CENTER_X_M,
+                               geometry.bucket_speed_m_s)
+        previous_risk = self.safe_dig_state.risk if hasattr(self, "safe_dig_state") else None
         self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
+        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk)
         self.safe_dig_state = self.envelope_engine.update(self.safe_dig_state)
         self.safe_dig_state = self.design_conflict_engine.update(self.safe_dig_state)
         self.precision_panel.update_conflict(self.safe_dig_state.design_conflict)
         self.gpr_panel.display_utility(self.safe_dig_state)
         self.excavator_view.set_state(self.safe_dig_state)
+
+    def _update_risk(self, _event=None) -> None:
+        self.safe_dig_state = self.risk_engine.update(self.safe_dig_state)
+        self.risk_panel.display(self.safe_dig_state.risk)

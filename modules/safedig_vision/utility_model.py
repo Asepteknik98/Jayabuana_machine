@@ -25,6 +25,7 @@ class MachineState:
     target_slope_percent: float | None = None
     current_depth_m: float | None = None
     excavation_center_x_m: float | None = None
+    bucket_speed_mps: float | None = None
 
 
 @dataclass(frozen=True)
