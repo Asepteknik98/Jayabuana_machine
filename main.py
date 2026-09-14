@@ -1,6 +1,7 @@
 """Desktop entry point for XCMG SafeDig AI Copilot."""
 
 import sys
+from multiprocessing import freeze_support
 
 from PySide6.QtWidgets import QApplication
 
@@ -17,4 +18,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    freeze_support()
     sys.exit(main())

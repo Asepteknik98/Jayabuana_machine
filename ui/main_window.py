@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QFrame, QGridLayout, QLabel, QMainWindow, QVBoxLayout, QWidget,
+    QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
@@ -13,6 +13,8 @@ from core.safe_envelope import SafeEnvelopeEngine
 from core.risk_engine import RiskEngine
 from core.decision_engine import DecisionEngine
 from ui.widgets.status_indicator import StatusIndicator
+from ui.widgets.camera_panel import CameraPanel
+from core.app_controller import GuardianController
 from ui.widgets.risk_panel import RiskPanel
 from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
@@ -45,7 +47,7 @@ def make_panel(title: str, subtitle: str, message: str) -> QFrame:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, start_camera: bool = True) -> None:
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.resize(*WINDOW_SIZE)
@@ -84,10 +86,8 @@ class MainWindow(QMainWindow):
         self.precision_panel = PrecisionPanel()
         grid.addWidget(self.precision_panel, 1, 0)
         grid.setRowStretch(1, 2)
-        grid.addWidget(make_panel(
-            "SafeDig Guardian", "Operator Fatigue & Attention Intelligence",
-            "GUARDIAN PLACEHOLDER",
-        ), 2, 0)
+        self.camera_panel = CameraPanel()
+        grid.addWidget(self.camera_panel, 2, 0)
         excavation_panel = make_panel(
             "Excavation View", "2D workspace • SIMULATED MOTION", "",
         )
@@ -112,7 +112,11 @@ class MainWindow(QMainWindow):
         self.risk_status_label = self.risk_panel.level_label
         self.gpr_panel.state_changed.connect(self._update_risk)
         self._update_risk()
-        grid.addWidget(self.gpr_panel.wave, 0, 2)
+        sensor_previews = QTabWidget()
+        sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
+        sensor_previews.addTab(self.camera_panel.preview, "Operator Camera")
+        sensor_previews.setCurrentIndex(1)
+        grid.addWidget(sensor_previews, 0, 2)
         grid.addWidget(self.risk_panel, 1, 2, 2, 1)
         layout.addLayout(grid, 1)
 
@@ -140,6 +144,12 @@ class MainWindow(QMainWindow):
                 border: 1px solid #287659; border-radius: 6px;
                 padding: 12px; font-size: 22px; font-weight: 700; }
         """)
+        self.guardian_controller = GuardianController(self)
+        QApplication.instance().aboutToQuit.connect(self.guardian_controller.stop)
+        self.guardian_controller.observation_ready.connect(self._update_operator)
+        self.camera_panel.retry_requested.connect(self.guardian_controller.start)
+        if start_camera:
+            self.guardian_controller.start()
 
     def _update_utility(self, _event=None) -> None:
         bucket = self.excavator_view.bucket_position
@@ -150,8 +160,9 @@ class MainWindow(QMainWindow):
                                geometry.bucket_speed_m_s)
         previous_risk = self.safe_dig_state.risk if hasattr(self, "safe_dig_state") else None
         previous_decision = self.safe_dig_state.decision if hasattr(self, "safe_dig_state") else None
+        previous_operator = self.safe_dig_state.operator if hasattr(self, "safe_dig_state") else None
         self.safe_dig_state = self.utility_detector.update(self.gpr_panel.state, machine)
-        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk, decision=previous_decision)
+        self.safe_dig_state = replace(self.safe_dig_state, risk=previous_risk, decision=previous_decision, operator=previous_operator)
         self.safe_dig_state = self.envelope_engine.update(self.safe_dig_state)
         self.safe_dig_state = self.design_conflict_engine.update(self.safe_dig_state)
         self.precision_panel.update_conflict(self.safe_dig_state.design_conflict)
@@ -165,3 +176,11 @@ class MainWindow(QMainWindow):
     def _update_decision(self, _event=None) -> None:
         self.safe_dig_state = self.decision_engine.update(self.safe_dig_state)
         self.decision_panel.display(self.safe_dig_state.decision)
+
+    def _update_operator(self, state, frame) -> None:
+        self.safe_dig_state = replace(self.safe_dig_state, operator=state)
+        self.camera_panel.display(self.safe_dig_state.operator, frame)
+
+    def closeEvent(self, event) -> None:
+        self.guardian_controller.stop()
+        super().closeEvent(event)
