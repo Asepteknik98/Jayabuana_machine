@@ -11,7 +11,7 @@ from ui.widgets.guardian_panel import GuardianPanel
 class CameraPreview(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.setMinimumHeight(140)
+        self.setMinimumHeight(90)
         self.image = QImage()
         self.status_text = "CAMERA OFFLINE"
         self.detail_text = "Operator analysis: UNAVAILABLE"
@@ -27,8 +27,14 @@ class CameraPreview(QWidget):
             painter.drawImage(QRect(x,y,size.width(),size.height()),self.image)
         painter.setPen(Qt.GlobalColor.white)
         font = painter.font()
-        font.setPixelSize(12)
+        font.setPixelSize(13)
         painter.setFont(font)
+        if getattr(self,"compact",False):
+            from PySide6.QtCore import QRectF
+            painter.fillRect(0,self.height()-32,self.width(),32,Qt.GlobalColor.black)
+            caption="LIVE CAMERA" if not self.image.isNull() else "CAMERA OFFLINE"
+            painter.drawText(QRectF(2,self.height()-32,self.width()-4,32),Qt.AlignmentFlag.AlignCenter|Qt.TextFlag.TextWordWrap,caption)
+            painter.end();return
         painter.fillRect(0, self.height()-62, self.width(), 62, Qt.GlobalColor.black)
         painter.drawText(8, self.height()-46, self.status_text)
         painter.drawText(8, self.height()-29, self.detail_text)

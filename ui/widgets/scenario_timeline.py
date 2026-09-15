@@ -1,8 +1,32 @@
 """Compact scenario controls and event status; no assessment logic."""
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt, QRectF, QPointF
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QProgressBar, QListWidget, QListView
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPainter, QPen
 from simulation.scenario_manager import SCENARIO_DIRECTORY
+
+class TimelineCanvas(QWidget):
+    """Event positions are presentation only, read from the scenario manager."""
+    def __init__(self):
+        super().__init__();self.setMinimumHeight(60);self.events=[];self.active=-1;self.complete=False
+    def paintEvent(self,event):
+        p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        font=p.font();font.setPixelSize(13);p.setFont(font)
+        count=len(self.events)
+        if not count:
+            p.drawText(self.rect(),Qt.AlignmentFlag.AlignCenter,"SCENARIO UNAVAILABLE");return
+        step=self.width()/count
+        p.setPen(QPen(QColor("#294257"),2));p.drawLine(QPointF(step/2,12),QPointF(self.width()-step/2,12))
+        for i,item in enumerate(self.events):
+            done=i<self.active or self.complete
+            color=QColor("#65daba" if done else "#45d5e7" if i==self.active else "#758a9e")
+            x=(i+.5)*step;p.setBrush(QColor("#102033"));p.setPen(QPen(color,2));p.drawEllipse(QPointF(x,12),8,8)
+            if done:
+                p.drawLine(QPointF(x-4,12),QPointF(x-1,15));p.drawLine(QPointF(x-1,15),QPointF(x+4,8))
+            elif i==self.active:p.setBrush(color);p.drawEllipse(QPointF(x,12),3,3)
+            p.setPen(color)
+            text=f"{item['time_s']:g}s  "+item['type'].replace('_',' ').title()
+            p.drawText(QRectF(i*step+5,27,step-10,self.height()-27),Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTop|Qt.TextFlag.TextWordWrap,text)
+        p.end()
 
 class ScenarioTimeline(QWidget):
     selected = Signal(str)
@@ -15,7 +39,7 @@ class ScenarioTimeline(QWidget):
         super().__init__()
         self._event_signature = None
         layout = QVBoxLayout(self);layout.setContentsMargins(0,0,0,0);layout.setSpacing(3)
-        row = QHBoxLayout();layout.addLayout(row)
+        self.controls=QWidget();row=QHBoxLayout(self.controls);row.setContentsMargins(0,0,0,0)
         self.scenarios = QComboBox()
         for key, name in (("normal_operation","Normal Operation"),("utility_detected","Utility Detected"),
                 ("wet_clay","Wet Clay"),("design_conflict","Design Conflict"),("operator_drowsy","Operator Drowsy"),
@@ -32,11 +56,14 @@ class ScenarioTimeline(QWidget):
         self.mode = QComboBox();self.mode.addItems(["DEMO MODE", "LIVE MODE"]);row.addWidget(self.mode)
         self.start = QPushButton("START");self.pause = QPushButton("PAUSE");self.reset = QPushButton("RESET")
         for button in (self.start,self.pause,self.reset):row.addWidget(button)
-        self.time_label = QLabel();row.addWidget(self.time_label,1)
-        self.source_label = QLabel();layout.addWidget(self.source_label)
+        self.start.setObjectName("startButton")
+        info=QHBoxLayout();layout.addLayout(info)
+        caption=QLabel("SCENARIO TIMELINE");caption.setObjectName("muted");info.addWidget(caption)
+        self.time_label=QLabel();info.addWidget(self.time_label,1)
+        self.next_label=QLabel();self.next_label.setObjectName("muted");info.addWidget(self.next_label)
+        self.source_label = QLabel();self.source_label.setObjectName("muted");layout.addWidget(self.source_label)
         self.progress = QProgressBar();self.progress.setFixedHeight(10);self.progress.setTextVisible(False);layout.addWidget(self.progress)
-        self.events = QListWidget();self.events.setFlow(QListView.Flow.LeftToRight);self.events.setWrapping(False)
-        self.events.setFixedHeight(65);layout.addWidget(self.events)
+        self.events=TimelineCanvas();layout.addWidget(self.events)
         self.scenarios.currentIndexChanged.connect(lambda _: self.selected.emit(self.scenarios.currentData()))
         self.start.clicked.connect(self.start_requested);self.pause.clicked.connect(self.pause_requested)
         self.reset.clicked.connect(self.reset_requested)
@@ -55,15 +82,9 @@ class ScenarioTimeline(QWidget):
             tuple((event["time_s"],event["type"]) for event in manager.definition["events"]) if manager.definition else None)
         if signature == self._event_signature:return
         self._event_signature=signature
-        self.events.clear()
-        if not manager.definition:
-            self.events.addItem("SCENARIO LOAD ERROR / UNAVAILABLE")
-            return
-        for index,event in enumerate(manager.definition["events"]):
-            status = "COMPLETED" if index < state.current_event_index or state.status == "COMPLETED" else "ACTIVE" if index == state.current_event_index else "PENDING"
-            self.events.addItem(f"{event['time_s']:02g}s {event['type']}\n{status}")
-            item = self.events.item(index)
-            item.setForeground(QColor("#45d5e7" if status == "ACTIVE" else "#4cde9a" if status == "COMPLETED" else "#94aec3"))
-            if status == "ACTIVE":
-                item.setBackground(QColor("#24506b"));self.events.setCurrentItem(item)
-        if state.current_event_index >= 0:self.events.scrollToItem(self.events.item(state.current_event_index))
+        events=manager.definition["events"] if manager.definition else []
+        self.events.events=events;self.events.active=state.current_event_index
+        self.events.complete=state.status=="COMPLETED";self.events.update()
+        next_index=state.current_event_index+1
+        upcoming=events[next_index] if next_index<len(events) and state.status!="COMPLETED" else None
+        self.next_label.setText("NEXT: "+upcoming["type"].replace("_"," ").title() if upcoming else "END OF TIMELINE")

@@ -55,5 +55,5 @@ class ExcavatorView(QWidget):
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
-        draw_excavator(painter, QRectF(self.rect()), self.elapsed_seconds, self.scenario_position)
+        draw_excavator(painter, QRectF(self.rect()), self.elapsed_seconds, self.scenario_position, getattr(self,"presentation",False))
         painter.end()

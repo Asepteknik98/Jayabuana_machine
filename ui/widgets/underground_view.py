@@ -23,8 +23,8 @@ class UndergroundView(ExcavatorView):
         super().paintEvent(event)
         if self.safe_dig_state is not None:
             painter = QPainter(self)
-            draw_planned_excavation(painter, QRectF(self.rect()), self.safe_dig_state)
+            draw_planned_excavation(painter, QRectF(self.rect()), self.safe_dig_state, getattr(self,"presentation",False))
             if self.safe_dig_state.envelope is not None:
-                draw_safe_envelope(painter, QRectF(self.rect()), self.safe_dig_state.envelope)
-            draw_utility(painter, QRectF(self.rect()), self.safe_dig_state)
+                draw_safe_envelope(painter, QRectF(self.rect()), self.safe_dig_state.envelope, getattr(self,"presentation",False))
+            draw_utility(painter, QRectF(self.rect()), self.safe_dig_state, getattr(self,"presentation",False))
             painter.end()

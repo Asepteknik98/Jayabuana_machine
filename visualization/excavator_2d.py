@@ -3,7 +3,7 @@
 from math import cos, pi, sin, acos, atan2, hypot
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QLinearGradient
 
 
 SCENE_WIDTH = 800
@@ -24,7 +24,7 @@ def excavator_pose(seconds: float) -> tuple[QPointF, QPointF, QPointF, float]:
     return pivot, elbow, bucket, 15 + 25 * sin(phase + 0.5)
 
 
-def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float, target=None) -> None:
+def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float, target=None, presentation=False) -> None:
     """Fit the complete side view into the available widget area."""
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -33,8 +33,11 @@ def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float, target=Non
     painter.scale(scale, scale)
     painter.translate(-SCENE_WIDTH / 2, -SCENE_HEIGHT / 2)
 
-    painter.fillRect(QRectF(0, 0, 800, 520), QColor("#0b1d2e"))
+    sky=QLinearGradient(0,0,0,GROUND_Y);sky.setColorAt(0,QColor("#10273b"));sky.setColorAt(1,QColor("#1b3a4a"))
+    painter.fillRect(QRectF(0,0,800,520),sky)
     painter.fillRect(QRectF(0, GROUND_Y, 800, 190), QColor("#23313a"))
+    for y,color in ((375,"#293b42"),(430,"#304047"),(485,"#35444a")):
+        painter.fillRect(QRectF(0,y,800,35),QColor(color))
     painter.setPen(QPen(QColor("#30414a"), 1))
     for x in range(0, 800, 40):
         painter.drawLine(x, GROUND_Y + 15, x + 65, 520)
@@ -96,6 +99,6 @@ def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float, target=Non
     for point in (pivot, elbow, bucket):
         painter.drawEllipse(point, 7, 7)
     painter.setPen(QColor("#8caabb"))
-    painter.drawText(QPointF(28, 42), "EXCAVATOR / SIDE VIEW")
-    painter.drawText(QPointF(28, 490), "SIMULATED MOTION • DISPLAY ONLY")
+    if not presentation:painter.drawText(QPointF(28,42),"EXCAVATOR / SIDE VIEW")
+    if not presentation:painter.drawText(QPointF(28,490),"SIMULATED MOTION / DISPLAY ONLY")
     painter.restore()

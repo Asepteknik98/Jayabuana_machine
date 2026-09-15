@@ -12,7 +12,7 @@ COLORS = {EnvelopeStatus.CLEAR: "#59dbc5", EnvelopeStatus.APPROACHING: "#ffb347"
           EnvelopeStatus.INSIDE: "#ff6060", EnvelopeStatus.UNAVAILABLE: "#a1adba"}
 
 
-def draw_safe_envelope(painter: QPainter, bounds: QRectF, envelope: EnvelopeState) -> None:
+def draw_safe_envelope(painter: QPainter, bounds: QRectF, envelope: EnvelopeState, presentation=False) -> None:
     painter.save()
     scale = min(bounds.width() / SCENE_WIDTH, bounds.height() / SCENE_HEIGHT)
     painter.translate(bounds.center())
@@ -27,6 +27,11 @@ def draw_safe_envelope(painter: QPainter, bounds: QRectF, envelope: EnvelopeStat
         painter.setBrush(fill)
         painter.setPen(QPen(color, 2))
         painter.drawEllipse(center, radius, radius)
+    if presentation:
+        painter.setPen(color)
+        font=painter.font();font.setPixelSize(15);painter.setFont(font)
+        painter.drawText(QPointF(28,45),"SAFE ENVELOPE / "+envelope.status.value)
+        painter.restore();return
     # No zone at a fabricated location when unavailable; show a gray legend.
     painter.setBrush(QColor("#0b1d2e"))
     painter.setPen(QPen(color, 1, Qt.PenStyle.DashLine if not envelope.valid else Qt.PenStyle.SolidLine))
@@ -35,14 +40,14 @@ def draw_safe_envelope(painter: QPainter, bounds: QRectF, envelope: EnvelopeStat
     font.setPixelSize(13)
     painter.setFont(font)
     if envelope.valid:
-        lines = ["DYNAMIC SAFE ENVELOPE • PROTOTYPE",
+        lines = ["DYNAMIC SAFE ENVELOPE â€¢ PROTOTYPE",
                  f"ENVELOPE {envelope.status.value}  (utility center)",
                  f"Safe Clearance: {envelope.base_clearance_m:.2f} m | Uncertainty: {envelope.uncertainty_margin_m:.3f} m",
                  f"Effective Envelope: {envelope.effective_clearance_m:.3f} m",
                  f"Bucket Distance: {envelope.distance_to_utility_m:.2f} m",
                  f"Clearance Margin: {envelope.clearance_margin_m:+.2f} m"]
     else:
-        lines = ["DYNAMIC SAFE ENVELOPE • PROTOTYPE", "ENVELOPE UNAVAILABLE", envelope.information]
+        lines = ["DYNAMIC SAFE ENVELOPE â€¢ PROTOTYPE", "ENVELOPE UNAVAILABLE", envelope.information]
     for row, text in enumerate(lines):
         painter.drawText(QPointF(415, 40 + row * 20), text)
     painter.restore()

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
 from config.simulation_config import SIMULATION_DT
+from ui.theme import STYLE
 from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
@@ -68,23 +69,28 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(20, 12, 20, 12)
+        layout.setContentsMargins(20, 8, 20, 8)
         layout.setSpacing(8)
 
-        title = QLabel(APP_NAME)
-        title.setObjectName("appTitle")
-        heading_row=QHBoxLayout();heading_row.addWidget(title,1)
-        self.view_mode=QComboBox();self.view_mode.addItems(["PRESENTATION MODE","ENGINEERING MODE"])
-        heading_row.addWidget(self.view_mode);layout.addLayout(heading_row)
-        tagline = QLabel(TAGLINE)
-        tagline.setObjectName("tagline")
-        layout.addWidget(tagline)
-        mode = QLabel("ENGINEERING PROTOTYPE / SIMULATION / DEMONSTRATION")
-        mode.setObjectName("muted")
-        layout.addWidget(mode)
-
+        header = QHBoxLayout()
+        brand = QVBoxLayout()
+        title = QLabel(APP_NAME); title.setObjectName("appTitle")
+        tagline = QLabel(TAGLINE); tagline.setObjectName("tagline")
+        brand.addWidget(title); brand.addWidget(tagline)
+        header.addLayout(brand, 1)
         self.scenario_panel = ScenarioTimeline()
-        layout.addWidget(self.scenario_panel)
+        controls = QVBoxLayout()
+        controls.addWidget(self.scenario_panel.controls)
+        options = QHBoxLayout()
+        online = QLabel("SYSTEM ONLINE  /  MVP-0 SOFTWARE")
+        online.setStyleSheet("color:#65daba;font-size:13px;")
+        options.addWidget(online, 1)
+        self.view_mode = QComboBox()
+        self.view_mode.addItems(["PRESENTATION MODE", "ENGINEERING MODE"])
+        options.addWidget(self.view_mode)
+        controls.addLayout(options)
+        header.addLayout(controls)
+        layout.addLayout(header)
         self.scenario_manager = ScenarioManager()
         self.scenario_manager.load(self.scenario_panel.scenarios.currentData())
         self.scenario_controller = ScenarioController(self.scenario_manager)
@@ -103,10 +109,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.system_health)
 
         grid = QGridLayout()
-        grid.setSpacing(14)
-        grid.setColumnStretch(0, 3)
-        grid.setColumnStretch(1, 6)
-        grid.setColumnStretch(2, 3)
+        grid.setSpacing(12)
+        grid.setColumnStretch(0, 24)
+        grid.setColumnStretch(1, 52)
+        grid.setColumnStretch(2, 24)
         for row in range(3):
             grid.setRowStretch(row, 1)
         self.gpr_source = GPRSimulator()
@@ -115,19 +121,22 @@ class MainWindow(QMainWindow):
         ])
         self.gpr_panel.soil_selected.connect(self.gpr_source.set_soil)
         self.gpr_panel.setMinimumHeight(120)
-        grid.addWidget(self._presentation_stack(self.gpr_panel,"SafeDig Vision"), 0, 0)
+        left = QVBoxLayout(); left.setSpacing(12)
+        left.addWidget(self._presentation_stack(self.gpr_panel,"SafeDig Vision"), 3)
         grid.setRowStretch(0, 3)
         self.precision_panel = PrecisionPanel()
         precision_scroll = QScrollArea()
         precision_scroll.setWidgetResizable(True)
         precision_scroll.setWidget(self.precision_panel)
-        grid.addWidget(self._presentation_stack(precision_scroll,"SafeDig Precision"), 1, 0)
+        left.addWidget(self._presentation_stack(precision_scroll,"SafeDig Precision"), 2)
+        grid.addLayout(left, 0, 0, 3, 1)
         grid.setRowStretch(1, 3)
         self.camera_panel = CameraPanel()
-        grid.addWidget(self._presentation_stack(self.camera_panel,"SafeDig Guardian"), 2, 0)
+        guardian_stack = self._presentation_stack(self.camera_panel,"SafeDig Guardian")
+        self.presentation_cards[-1].attach_preview(self.camera_panel.preview)
         grid.setRowStretch(2,3)
         excavation_panel = make_panel(
-            "Excavation View", "2D workspace • SIMULATED MOTION", "",
+            "Excavation View", "SIMULATED WORKSPACE / SIDE VIEW", "",
         )
         excavation_layout = excavation_panel.layout()
         placeholder = excavation_layout.takeAt(2).widget()
@@ -150,12 +159,13 @@ class MainWindow(QMainWindow):
         self.risk_status_label = self.risk_panel.level_label
         self.sensor_previews = sensor_previews = QTabWidget()
         self.experiment_panel = ExperimentPanel()
-        sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
-        sensor_previews.addTab(self.camera_panel.preview, "Operator Camera")
+        sensor_previews.addTab(self.risk_panel, "Risk Overview")
         sensor_previews.addTab(self.experiment_panel, "Experiment Summary")
-        sensor_previews.setCurrentIndex(1)
-        grid.addWidget(sensor_previews, 0, 2)
-        grid.addWidget(self.risk_panel, 1, 2, 2, 1)
+        sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
+        right = QVBoxLayout(); right.setSpacing(12)
+        right.addWidget(sensor_previews, 2)
+        right.addWidget(guardian_stack, 1)
+        grid.addLayout(right, 0, 2, 3, 1)
         layout.addLayout(grid, 1)
 
         self.decision_engine = DecisionEngine()
@@ -167,24 +177,8 @@ class MainWindow(QMainWindow):
         self._update_assessment()
         layout.addWidget(self.decision_panel)
 
-        self.setStyleSheet("""
-            QMainWindow, QWidget { background: #091421; color: #dfebf5;
-                font-family: 'Segoe UI'; font-size: 14px; }
-            QFrame#panel { background: #10263b; border: 1px solid #24506b;
-                border-radius: 8px; }
-            QLabel { background: transparent; border: none; }
-            QLabel#appTitle { font-size: 30px; font-weight: 700; }
-            QLabel#tagline { color: #45d5e7; font-size: 14px;
-                font-weight: 600; }
-            QLabel#panelTitle { color: #65deef; font-size: 19px;
-                font-weight: 600; }
-            QLabel#muted { color: #94aec3; font-size: 12px; }
-            QLabel#placeholder { color: #809bb1; font-size: 13px; }
-            QLabel#riskScore { font-size: 40px; font-weight: 700; }
-            QLabel#safeStatus { color: #4cde9a; background: #123c35;
-                border: 1px solid #287659; border-radius: 6px;
-                padding: 12px; font-size: 22px; font-weight: 700; }
-        """)
+        layout.addWidget(self.scenario_panel)
+        self.setStyleSheet(STYLE)
         self.guardian_controller = GuardianController(self)
         QApplication.instance().aboutToQuit.connect(self._shutdown)
         self.guardian_controller.observation_ready.connect(self._update_operator)
@@ -196,12 +190,25 @@ class MainWindow(QMainWindow):
 
     def _presentation_stack(self, engineering_widget, title):
         stack=QStackedWidget();card=PresentationPanel(title)
+        from PySide6.QtWidgets import QSizePolicy
+        engineering_widget.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Ignored)
         stack.addWidget(card);stack.addWidget(engineering_widget)
         self.presentation_stacks.append(stack);self.presentation_cards.append(card)
         return stack
 
     def _presentation_mode(self, index):
         enabled=index==0
+        self.sensor_previews.tabBar().setVisible(not enabled)
+        if enabled:self.sensor_previews.setCurrentIndex(0)
+        self.excavator_view.presentation = enabled
+        self.excavator_view.update()
+        preview = self.camera_panel.preview
+        preview.compact = enabled
+        if enabled:
+            self.presentation_cards[-1].attach_preview(preview)
+        else:
+            self.camera_panel.layout().addWidget(preview)
+
         for stack in self.presentation_stacks:stack.setCurrentIndex(0 if enabled else 1)
         self.risk_panel.set_presentation(enabled)
         self.decision_panel.set_presentation(enabled)

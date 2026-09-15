@@ -10,7 +10,7 @@ from visualization.excavator_2d import SCENE_WIDTH,SCENE_HEIGHT
 from visualization.underground_utility import world_to_scene
 
 
-def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState) -> None:
+def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState, presentation=False) -> None:
     result=state.design_conflict
     if result is None or result.left_x_m is None:
         return
@@ -21,7 +21,7 @@ def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState
     rect=QRectF(world_to_scene(result.left_x_m,0),world_to_scene(result.right_x_m,result.bottom_z_m))
     color=QColor({ConflictStatus.NO_CONFLICT:'#68deeb',ConflictStatus.POTENTIAL_CONFLICT:'#ffb347',
                   ConflictStatus.DESIGN_CONFLICT:'#ff6060',ConflictStatus.UNKNOWN:'#a1adba'}[result.status])
-    painter.setPen(QPen(color,1.5,Qt.PenStyle.DashLine))
+    painter.setPen(QPen(QColor("#e4ecf4") if presentation else color,1.5,Qt.PenStyle.DashLine))
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRect(rect)
     envelope=state.envelope
@@ -33,5 +33,10 @@ def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState
         fill=QColor(color);fill.setAlpha(45)
         painter.fillPath(trench.intersected(zone),fill)
     font=painter.font();font.setPixelSize(12);painter.setFont(font)
-    painter.drawText(rect.bottomLeft()+QPointF(0,18),f'TARGET {-result.bottom_z_m:.2f} m')
+    if presentation:
+        font.setPixelSize(15);painter.setFont(font);painter.setPen(QColor("#e4ecf4"))
+        painter.drawText(QPointF(28,440),f"TARGET DEPTH  {-result.bottom_z_m:.2f} m")
+        if state.machine and state.machine.current_depth_m is not None:
+            painter.drawText(QPointF(28,410),f"CURRENT DEPTH  {state.machine.current_depth_m:.2f} m")
+    else:painter.drawText(rect.bottomLeft()+QPointF(0,18),f'TARGET {-result.bottom_z_m:.2f} m')
     painter.restore()
