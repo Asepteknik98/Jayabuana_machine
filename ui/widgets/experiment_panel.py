@@ -39,4 +39,14 @@ class ExperimentPanel(QWidget):
         elif summary:
             lines.append("JSON / CSV export saved")
             self.label.setToolTip(str(recorder.directory))
+        reliability=summary.get("reliability") if summary else None
+        if reliability:
+            lines += ["RELIABILITY / SOFTWARE INJECTION ONLY",
+                f"Faults: {reliability['fault_count']} | Recovered: {reliability['fault_recovery_count']}",
+                "Mean recovery: "+show(reliability["mean_recovery_time_s"]," s"),
+                "False-safe: "+str(reliability["false_safe_condition"]),
+                "False-restrict: "+str(reliability["false_restrict_condition"])]
+        active=list(recorder.events._active_faults.values())
+        if active:
+            lines += ["FAULT INJECTION ACTIVE"]+[f"{f.source}: {f.fault_type.value} / {f.severity}" for f in active]
         self.label.setText("\n".join(lines))

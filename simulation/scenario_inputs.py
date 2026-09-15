@@ -15,6 +15,8 @@ class ScenarioInputs:
         self.gpr = GPRSimulator()
         self.excavator = ExcavatorSimulator()
         self.gnss = GNSSSimulator()
+        from simulation.fault_injection import FaultInjectionEngine
+        self.faults = FaultInjectionEngine()
 
     def sample(self, manager, timestamp, live_operator=None):
         data, values = manager.definition, manager.inputs()
@@ -37,4 +39,14 @@ class ScenarioInputs:
         self.guardian_source = "SIMULATED" if manager.state.demo_mode else "LIVE" if operator and operator.camera_available else "OFFLINE"
         self.position, self.geometry = position, geometry
         self.machine_origin = self.gnss.read(timestamp)
-        return replace(SafeDigState.from_sensor(sensor, timestamp), machine=machine, operator=operator)
+        state = replace(SafeDigState.from_sensor(sensor, timestamp), machine=machine, operator=operator)
+        state = self.faults.apply(state,data.get("faults",[]),manager.state.elapsed_time_s,timestamp,
+            data.get("seed",42),manager.state.demo_mode,self.machine_origin)
+        self.machine_origin = self.faults.gnss
+        if state.machine is not machine:
+            from modules.safedig_precision.bucket_position import BucketPosition
+            self.position = BucketPosition(state.machine.bucket_x_m,-state.machine.bucket_z_m)
+            self.geometry = replace(geometry,current_depth_m=state.machine.current_depth_m,
+                remaining_depth_m=state.machine.target_depth_m-state.machine.current_depth_m,
+                bucket_speed_m_s=state.machine.bucket_speed_mps)
+        return state

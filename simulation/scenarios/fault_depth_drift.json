@@ -1,0 +1,59 @@
+{
+  "seed": 42,
+  "duration_seconds": 12,
+  "description": "SOFTWARE FAULT INJECTION / SIMULATION; no physical control",
+  "excavation": {
+    "target_depth_m": 1.5,
+    "target_width_m": 0.8,
+    "target_slope_percent": 2.0
+  },
+  "soil": {
+    "type": "NORMAL_SOIL"
+  },
+  "utility_ground_truth": {
+    "enabled": true,
+    "type": "FIBER_OPTIC_CONDUIT",
+    "x_m": 6.5,
+    "depth_m": 1.32
+  },
+  "operator": {
+    "source": "SIMULATED"
+  },
+  "scenario_id": "fault_depth_drift",
+  "name": "Reliability: Utility Depth Drift",
+  "events": [
+    {
+      "time_s": 0,
+      "type": "RELIABILITY BASELINE",
+      "inputs": {
+        "bucket_x_m": 5.0,
+        "bucket_depth_m": 0.2,
+        "exposure": 1.0,
+        "plan_center_x_m": 4.8,
+        "fatigue": 20.0,
+        "attention": 0.9
+      }
+    },
+    {
+      "time_s": 3,
+      "type": "FAULT WINDOW"
+    },
+    {
+      "time_s": 8,
+      "type": "RECOVERY WINDOW"
+    },
+    {
+      "time_s": 12,
+      "type": "SCENARIO COMPLETE"
+    }
+  ],
+  "faults": [
+    {
+      "id": "utility_depth_drift",
+      "type": "UTILITY_DEPTH_DRIFT",
+      "start_time_s": 3,
+      "duration_s": 5,
+      "severity": "MEDIUM"
+    }
+  ]
+}

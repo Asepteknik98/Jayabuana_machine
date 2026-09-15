@@ -52,6 +52,8 @@ class ScenarioManager:
             raise ValueError("Scenario ID and name required")
         duration = data.get("duration_seconds")
         if not number(duration) or duration <= 0: raise ValueError("Invalid duration")
+        from simulation.fault_injection import validate_faults
+        validate_faults(data.get("faults",[]),duration)
         events = data.get("events")
         if not isinstance(events, list) or not events: raise ValueError("Events required")
         for event in events:

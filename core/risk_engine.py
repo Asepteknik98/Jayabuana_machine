@@ -69,7 +69,8 @@ class RiskEngine:
                 or fusion.signal_quality is None or not isfinite(fusion.signal_quality)):
             self._level = None
             return RiskState(timestamp=fusion.timestamp)
-        weak = confidence < config.VERIFY_THRESHOLD or fusion.sensor_health == "DEGRADED"
+        weak = (confidence < config.VERIFY_THRESHOLD or fusion.sensor_health == "DEGRADED"
+                or "PRECISION_DEGRADED" in fusion.context_flags)
         proximity = 0.0
         if fusion.utility_detected:
             radius, distance = fusion.effective_clearance_m, fusion.utility_distance_m

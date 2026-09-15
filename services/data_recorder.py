@@ -56,7 +56,7 @@ class DataRecorder:
         self.directory = self.output_directory / experiment_id
         self.truth = GroundTruth.from_scenario(scenario,monotonic())
         self.evaluator = ExperimentEvaluator(self.truth)
-        self.configuration = dict(configuration_version="MVP0_STAGE14_V1",risk_weights=dict(WEIGHTS),
+        self.configuration = dict(configuration_version="MVP0_STAGE15_V1",risk_weights=dict(WEIGHTS),
             scenario_sha256=hashlib.sha256(json.dumps(scenario,sort_keys=True).encode()).hexdigest(),
             scenario=scenario)
         self.active = True
@@ -74,13 +74,14 @@ class DataRecorder:
             ground_truth_label="GROUND TRUTH - SIMULATION ONLY",ground_truth=asdict(self.truth),
             telemetry_rate_hz=2,metrics_sampling="All assessment updates; simulation-time duration integration")
 
-    def observe(self, state, simulation_time_s, latencies=None, guardian_source=None):
+    def observe(self, state, simulation_time_s, latencies=None, guardian_source=None,fault_states=()):
         if not self.active: return
         if simulation_time_s <= self.last_time and self.evaluator.history: return
         row = telemetry(state,simulation_time_s,latencies)
         row["guardian_source"] = guardian_source or self.session.guardian_source
         self.last_time = simulation_time_s
         self.session.duration_s = simulation_time_s
+        self.events.observe_faults(fault_states,row)
         self.events.observe(row)
         self.evaluator.observe(row)
         if simulation_time_s + 1e-9 >= self.next_snapshot:
@@ -101,6 +102,14 @@ class DataRecorder:
         self.events.emit("SCENARIO_COMPLETED" if status=="COMPLETED" else "EXPERIMENT_ABORTED",self.last_time,
             data={"status":status})
         metrics = self.evaluator.summarize(self.events.events,self.last_time)
+        from evaluation.reliability_metrics import reliability_summary
+        reliability = reliability_summary(self.truth,self.evaluator.history,self.events.events,metrics["detection"]["outcome"])
+        metrics["reliability"] = reliability
+        for event,active in (("FALSE_POSITIVE_EVALUATED",reliability["false_positive_count"]),
+                ("FALSE_NEGATIVE_EVALUATED",reliability["false_negative_count"]),
+                ("FALSE_SAFE_EVALUATED",reliability["false_safe_condition"]),
+                ("FALSE_RESTRICT_EVALUATED",reliability["false_restrict_condition"])):
+            if active:self.events.emit(event,self.last_time,"Evaluator",severity="WARNING")
         self.summary = dict(experiment_id=self.session.experiment_id,scenario=self.session.scenario_id,
             scenario_name=self.session.scenario_name,status=status,**metrics)
         # Include the last state even for runs aborted between periodic snapshots.

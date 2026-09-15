@@ -130,7 +130,7 @@ class ScenarioController:
         state = self.envelope.update(state)
         state = self.design.update(state)
         state = self.assessment.update(state, timestamp)
-        self.recorder.observe(state,self.manager.state.elapsed_time_s,self.assessment.latencies,self.inputs.guardian_source)
+        self.recorder.observe(state,self.manager.state.elapsed_time_s,self.assessment.latencies,self.inputs.guardian_source,self.inputs.faults.states)
         if self.manager.state.status == "COMPLETED":
             self.recorder.finalize("COMPLETED")
         return state

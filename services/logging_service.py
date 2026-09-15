@@ -26,6 +26,12 @@ def telemetry(state, simulation_time_s, latencies=None):
         fusion_confidence=value(fusion,"fusion_confidence"), sensor_health=value(state,"sensor_health"),
         anomaly_detected=value(state.sensor,"anomaly_detected"),
         verification_required=value(fusion,"verification_required"),
+        vision_valid=value(fusion,"vision_valid"),precision_valid=value(fusion,"precision_valid"),
+        guardian_valid=value(fusion,"guardian_valid"),risk_valid=value(risk,"risk_valid"),
+        machine_health=value(machine,"sensor_health"),guardian_health=value(state.operator,"camera_health"),
+        precision_stale=bool(fusion and "PRECISION_STALE" in fusion.context_flags),
+        guardian_stale=bool(fusion and "GUARDIAN_STALE" in fusion.context_flags and state.operator
+            and state.operator.timestamp is not None and state.operator.camera_available),
         detection_available=bool(state.sensor and value(state,"sensor_health") not in ("OFFLINE","STALE")
             and fusion and "VISION_STALE" not in fusion.context_flags),
         fusion_latency_ms=(latencies or {}).get("fusion_latency_ms"),
@@ -38,6 +44,8 @@ class EventLogger:
     def __init__(self):
         self.events = []
         self.previous = {}
+        self._active_faults = {}
+        self._pending_recovery = {}
 
     def emit(self, event_type, simulation_time_s, source="Experiment", severity="INFO", message="", data=None):
         self.events.append(dict(simulation_time_s=simulation_time_s, monotonic_timestamp=monotonic(),
@@ -47,7 +55,11 @@ class EventLogger:
         checks = {
             "GPR_ANOMALY_DETECTED": (row["anomaly_detected"], "SafeDigVision"),
             "UTILITY_ESTIMATED": (bool(row["utility_detected"] and row["estimated_utility_depth_m"] is not None), "SafeDigVision"),
-            "SENSOR_DEGRADED": (row["sensor_health"] == "DEGRADED", "SafeDigVision"),
+            "SENSOR_DEGRADED": (row["sensor_health"] == "DEGRADED" or row.get("machine_health")=="DEGRADED", "SensorFusion"),
+            "SENSOR_OFFLINE": (row["sensor_health"]=="OFFLINE" or row.get("guardian_health")=="OFFLINE", "SensorFusion"),
+            "SENSOR_STALE": (row["sensor_health"]=="STALE" or row.get("precision_stale") or row.get("guardian_stale"), "SensorFusion"),
+            "RISK_INVALID": (row.get("risk_valid") is False, "RiskEngine"),
+            "DECISION_FALLBACK": (row.get("decision_action")=="VERIFY" and row.get("risk_valid") is False, "DecisionEngine"),
             "DESIGN_CONFLICT_DETECTED": (row["design_conflict"] == "DESIGN_CONFLICT", "SafeDigPrecision"),
             "ENVELOPE_APPROACHING": (row["envelope_status"] == "APPROACHING", "SafeEnvelope"),
             "ENVELOPE_ENTERED": (row["envelope_status"] == "INSIDE", "SafeEnvelope"),
@@ -65,3 +77,23 @@ class EventLogger:
             if current != self.previous.get(key):
                 self.emit(event,row["simulation_time_s"],source,data={"from":self.previous.get(key),"to":current})
             self.previous[key] = current
+
+    def observe_faults(self, faults, row):
+        current={f.fault_id:f for f in faults if f.active}
+        t=row["simulation_time_s"]
+        for key,fault in current.items():
+            if key not in self._active_faults:
+                self.emit("FAULT_STARTED",t,"FaultInjection",data=dict(fault_id=key,
+                    fault_type=fault.fault_type.value,source=fault.source,severity=fault.severity))
+        for key,fault in self._active_faults.items():
+            if key not in current:
+                self.emit("FAULT_CLEARED",t,"FaultInjection",data=dict(fault_id=key,source=fault.source))
+                self._pending_recovery[key]=fault
+        for key,fault in list(self._pending_recovery.items()):
+            healthy=(bool(row.get("vision_valid")) and row.get("sensor_health")=="VALID" and row.get("fusion_confidence")!="LOW"
+                     if fault.source=="GPR" else bool(row.get("precision_valid")) and row.get("machine_health")=="VALID"
+                     if fault.source=="PRECISION" else bool(row.get("guardian_valid")))
+            if healthy and not any(f.source==fault.source for f in current.values()):
+                self.emit("SENSOR_RECOVERED",t,"SensorFusion",data=dict(fault_id=key,source=fault.source))
+                del self._pending_recovery[key]
+        self._active_faults=current

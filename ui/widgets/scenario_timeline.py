@@ -20,6 +20,13 @@ class ScenarioTimeline(QWidget):
                 ("wet_clay","Wet Clay"),("design_conflict","Design Conflict"),("operator_drowsy","Operator Drowsy"),
                 ("critical_scenario","Critical Multimodal Demo")):
             self.scenarios.addItem(name, str(SCENARIO_DIRECTORY / (key+".json")))
+        import json
+        for path in sorted(SCENARIO_DIRECTORY.glob("fault_*.json")):
+            try:
+                name=json.loads(path.read_text(encoding="utf8"))["name"]
+            except (OSError,ValueError,KeyError):
+                name="UNAVAILABLE: "+path.stem
+            self.scenarios.addItem(name,str(path))
         self.scenarios.setCurrentIndex(5);row.addWidget(self.scenarios)
         self.mode = QComboBox();self.mode.addItems(["DEMO MODE", "LIVE MODE"]);row.addWidget(self.mode)
         self.start = QPushButton("START");self.pause = QPushButton("PAUSE");self.reset = QPushButton("RESET")

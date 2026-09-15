@@ -305,8 +305,11 @@ class MainWindow(QMainWindow):
         combo = self.gpr_panel.soil_combo
         combo.blockSignals(True);combo.setCurrentIndex(combo.findData(soil));combo.blockSignals(False)
         view.set_state(self.safe_dig_state)
-        from domain.operator_state import OperatorState
-        self.camera_panel.display(self.safe_dig_state.operator or OperatorState(),
+        from domain.operator_state import OperatorState, clear_guardian
+        display_operator = self.safe_dig_state.operator or OperatorState()
+        if not self.safe_dig_state.fusion.guardian_valid:
+            display_operator = clear_guardian(display_operator)
+        self.camera_panel.display(display_operator,
             None if self.scenario_manager.state.demo_mode else self.live_frame, inputs.guardian_source)
         self.camera_panel.guardian_panel.display_fusion(self.safe_dig_state.fusion)
         self.risk_panel.display(self.safe_dig_state.risk, self.safe_dig_state.fusion)

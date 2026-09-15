@@ -27,6 +27,7 @@ class MachineState:
     excavation_center_x_m: float | None = None
     bucket_speed_mps: float | None = None
     timestamp: float | None = None
+    sensor_health: SensorHealth = SensorHealth.VALID
 
 
 @dataclass(frozen=True)

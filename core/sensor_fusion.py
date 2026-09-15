@@ -33,6 +33,11 @@ class SensorFusion:
             health = sensor.sensor_health.value
         if sensor and not vision_fresh and health != "OFFLINE":
             health = "STALE"
+        conflicting = bool(sensor and sensor.anomaly_detected and sensor.confidence >= VERIFY_THRESHOLD
+                           and sensor.signal_quality < VERIFY_THRESHOLD)
+        if conflicting:
+            flags.add("CONFLICTING_SENSOR_EVIDENCE")
+            if health == "VALID": health = "DEGRADED"
         candidate = bool((sensor and sensor.anomaly_detected) or (utility and utility.detected))
         if candidate and any(item is not None and not fresh(item.timestamp, now, config.VISION_STALE_AFTER_S)
                              for item in (utility, envelope)):
@@ -47,7 +52,7 @@ class SensorFusion:
                 and envelope and envelope.valid and finite(envelope.effective_clearance_m)
                 and envelope.effective_clearance_m > 0 and finite(envelope.distance_to_utility_m)
                 and envelope.distance_to_utility_m >= 0)
-        precision = bool(precision_fresh and all(finite(v) for v in
+        precision = bool(precision_fresh and machine.sensor_health.value not in ("OFFLINE","STALE") and all(finite(v) for v in
             (machine.bucket_x_m, machine.bucket_z_m, machine.bucket_speed_mps)) and machine.bucket_speed_mps >= 0)
         guardian = bool(guardian_fresh and operator.camera_available and operator.camera_health.value == "VALID"
             and operator.valid and operator.face_detected and operator.face_count == 1 and operator.fatigue_valid
@@ -58,7 +63,9 @@ class SensorFusion:
         design_fresh = bool(design and fresh(design.timestamp, now, config.VISION_STALE_AFTER_S))
         design_status = design.status.value if design and design.valid and design_fresh else "UNKNOWN"
         if design and not design_fresh: flags.add("DESIGN_STALE")
-        weak = not finite(confidence) or confidence < VERIFY_THRESHOLD or health == "DEGRADED"
+        precision_degraded = bool(machine and machine.sensor_health.value == "DEGRADED")
+        if precision_degraded: flags.add("PRECISION_DEGRADED")
+        weak = precision_degraded or not finite(confidence) or confidence < VERIFY_THRESHOLD or health == "DEGRADED"
         verify = not vision or not precision or weak or design_status == "UNKNOWN" or bool(design and design.verification_required)
         if weak and candidate: flags.add("LOW_CONFIDENCE_UTILITY")
         if health == "DEGRADED": flags.add("SENSOR_DEGRADED")
