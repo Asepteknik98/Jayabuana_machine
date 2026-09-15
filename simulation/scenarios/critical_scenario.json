@@ -1,0 +1,116 @@
+{
+  "seed": 42,
+  "duration_seconds": 40,
+  "description": "Offline MVP-0 input demonstration",
+  "excavation": {
+    "target_depth_m": 1.5,
+    "target_width_m": 0.8,
+    "target_slope_percent": 2.0
+  },
+  "soil": {
+    "type": "NORMAL_SOIL"
+  },
+  "utility_ground_truth": {
+    "enabled": true,
+    "type": "FIBER_OPTIC_CONDUIT",
+    "x_m": 6.5,
+    "depth_m": 1.32
+  },
+  "operator": {
+    "source": "SIMULATED"
+  },
+  "scenario_id": "critical_scenario",
+  "name": "Critical Multimodal Demo",
+  "events": [
+    {
+      "time_s": 0,
+      "type": "NORMAL OPERATION",
+      "inputs": {
+        "bucket_x_m": 5.0,
+        "bucket_depth_m": 0.2,
+        "plan_center_x_m": 4.8,
+        "exposure": 0.0,
+        "fatigue": 20.0,
+        "attention": 0.9
+      }
+    },
+    {
+      "time_s": 5,
+      "type": "GPR ANOMALY",
+      "inputs": {
+        "exposure": 0.65
+      }
+    },
+    {
+      "time_s": 7,
+      "type": "POSSIBLE UTILITY",
+      "inputs": {
+        "exposure": 0.7
+      }
+    },
+    {
+      "time_s": 9,
+      "type": "UTILITY ESTIMATE",
+      "inputs": {
+        "exposure": 1.0
+      }
+    },
+    {
+      "time_s": 14,
+      "type": "DESIGN CONFLICT",
+      "inputs": {
+        "plan_center_x_m": 6.5
+      }
+    },
+    {
+      "time_s": 20,
+      "type": "BUCKET APPROACHING",
+      "inputs": {
+        "bucket_x_m": 6.45,
+        "bucket_depth_m": 0.9,
+        "fatigue": 20.0,
+        "attention": 0.9
+      }
+    },
+    {
+      "time_s": 26,
+      "type": "FATIGUE ELEVATED",
+      "inputs": {
+        "bucket_x_m": 6.46,
+        "bucket_depth_m": 0.94,
+        "fatigue": 65.0,
+        "attention": 0.5
+      }
+    },
+    {
+      "time_s": 31,
+      "type": "ENVELOPE INSIDE",
+      "inputs": {
+        "bucket_x_m": 6.48,
+        "bucket_depth_m": 1.08,
+        "fatigue": 80.0,
+        "attention": 0.35
+      }
+    },
+    {
+      "time_s": 36,
+      "type": "CRITICAL CONTEXT",
+      "inputs": {
+        "bucket_x_m": 6.5,
+        "bucket_depth_m": 1.2,
+        "fatigue": 100.0,
+        "attention": 0.25
+      }
+    },
+    {
+      "time_s": 40,
+      "type": "SCENARIO COMPLETE",
+      "inputs": {
+        "bucket_x_m": 6.5,
+        "bucket_depth_m": 1.25,
+        "fatigue": 100.0,
+        "attention": 0.25
+      }
+    }
+  ]
+}

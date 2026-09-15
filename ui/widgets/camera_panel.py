@@ -46,7 +46,7 @@ class CameraPanel(QFrame):
         scroll=QScrollArea();scroll.setWidgetResizable(True);outer.addWidget(scroll)
         content=QWidget();scroll.setWidget(content);layout=QVBoxLayout(content);layout.setSpacing(4)
         title=QLabel("SafeDig Guardian");title.setObjectName("panelTitle");title.setWordWrap(True);layout.addWidget(title)
-        subtitle=QLabel("Operator Fatigue & Attention Intelligence\nREAL CAMERA INPUT")
+        self.subtitle=subtitle=QLabel("Operator Fatigue & Attention Intelligence\nREAL CAMERA INPUT")
         subtitle.setObjectName("muted");subtitle.setWordWrap(True);layout.addWidget(subtitle)
         self.preview=CameraPreview()
         self.status_label=QLabel();self.status_label.setWordWrap(True);layout.addWidget(self.status_label)
@@ -57,7 +57,10 @@ class CameraPanel(QFrame):
         outer.addWidget(self.retry_button)
         self.display(OperatorState(),None)
 
-    def display(self,state: OperatorState,rgb_frame) -> None:
+    def display(self,state: OperatorState,rgb_frame,source="LIVE") -> None:
+        simulated = source == "SIMULATED"
+        self.subtitle.setText("GUARDIAN SOURCE: " + ("SIMULATED DEMO" if simulated else "LIVE CAMERA"))
+        self.retry_button.setEnabled(not simulated)
         online=state.camera_available and state.camera_health==SensorHealth.VALID
         self.status_label.setText("CAMERA ONLINE" if online else f"CAMERA {state.camera_health.value}")
         self.status_label.setStyleSheet("color:#4cde9a;" if online else "color:#a1adba;")
@@ -66,13 +69,16 @@ class CameraPanel(QFrame):
         self.face_label.setText(f"Face: {state.face_status}\nFace Count: {count}\nLandmarks: "+
                                 ("AVAILABLE" if state.landmarks_available else "UNAVAILABLE"))
         self.analysis_label.setText("Operator Analysis: "+state.analysis_status)
-        self.preview.status_text = self.status_label.text() + " • REAL CAMERA INPUT"
-        self.preview.detail_text = f"Face: {state.face_status} | Count: {count}"
+        if simulated:
+            self.status_label.setText("SIMULATED GUARDIAN INPUT")
+            self.face_label.setText("Synthetic operator state / no camera image")
+        self.preview.status_text = "SIMULATED GUARDIAN INPUT" if simulated else self.status_label.text() + " / LIVE CAMERA"
+        self.preview.detail_text = "GUARDIAN SOURCE: SIMULATED DEMO" if simulated else f"Face: {state.face_status} | Count: {count}"
         self.guardian_panel.display(state)
         fatigue=f'{state.fatigue_score:.0f} {state.fatigue_level}' if state.fatigue_valid else 'UNKNOWN'
         attention=f'{state.attention_score:.0%}' if state.attention_score is not None else 'UNKNOWN'
         self.preview.analysis_text=f'Fatigue: {fatigue} | Attention: {attention}'
-        if online and rgb_frame is not None:
+        if online and rgb_frame is not None and not simulated:
             height,width,_=rgb_frame.shape
             self.preview.image=QImage(rgb_frame.data,width,height,rgb_frame.strides[0],QImage.Format.Format_RGB888).copy()
         else:

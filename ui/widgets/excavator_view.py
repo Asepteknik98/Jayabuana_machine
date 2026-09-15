@@ -19,6 +19,7 @@ class ExcavatorView(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setMinimumSize(160, 160)
         self.setAccessibleName("Simulated excavator side view")
+        self.scenario_position = None
         self.elapsed_seconds = 0.0
         self.bucket_position = self._position()
         self.geometry = calculate_geometry(self.bucket_position)
@@ -45,7 +46,8 @@ class ExcavatorView(QWidget):
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._clock.start()
-        self._timer.start()
+        if self.scenario_position is None:
+            self._timer.start()
 
     def hideEvent(self, event: QHideEvent) -> None:
         self._timer.stop()
@@ -53,5 +55,5 @@ class ExcavatorView(QWidget):
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
-        draw_excavator(painter, QRectF(self.rect()), self.elapsed_seconds)
+        draw_excavator(painter, QRectF(self.rect()), self.elapsed_seconds, self.scenario_position)
         painter.end()

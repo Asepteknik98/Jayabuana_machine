@@ -25,7 +25,7 @@ def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRect(rect)
     envelope=state.envelope
-    if result.valid and result.planned_clearance_m <= 0 and envelope is not None and envelope.valid:
+    if result.valid and result.planned_clearance_m is not None and result.planned_clearance_m <= 0 and envelope is not None and envelope.valid:
         trench=QPainterPath();trench.addRect(rect)
         zone=QPainterPath()
         radius=envelope.effective_clearance_m*PIXELS_PER_METRE

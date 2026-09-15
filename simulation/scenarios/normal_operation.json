@@ -1,0 +1,52 @@
+{
+  "seed": 42,
+  "duration_seconds": 40,
+  "description": "Offline MVP-0 input demonstration",
+  "excavation": {
+    "target_depth_m": 1.5,
+    "target_width_m": 0.8,
+    "target_slope_percent": 2.0
+  },
+  "soil": {
+    "type": "NORMAL_SOIL"
+  },
+  "utility_ground_truth": {
+    "enabled": true,
+    "type": "FIBER_OPTIC_CONDUIT",
+    "x_m": 6.5,
+    "depth_m": 1.32
+  },
+  "operator": {
+    "source": "SIMULATED"
+  },
+  "scenario_id": "normal_operation",
+  "name": "Normal Operation",
+  "events": [
+    {
+      "time_s": 0,
+      "type": "NORMAL OPERATION",
+      "inputs": {
+        "bucket_x_m": 5.0,
+        "bucket_depth_m": 0.2,
+        "plan_center_x_m": 4.8,
+        "exposure": 0.0,
+        "fatigue": 20.0,
+        "attention": 0.9
+      }
+    },
+    {
+      "time_s": 20,
+      "type": "NORMAL DIGGING",
+      "inputs": {
+        "bucket_depth_m": 0.6
+      }
+    },
+    {
+      "time_s": 40,
+      "type": "SCENARIO COMPLETE",
+      "inputs": {
+        "bucket_depth_m": 0.3
+      }
+    }
+  ]
+}

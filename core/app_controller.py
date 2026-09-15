@@ -92,3 +92,31 @@ class AssessmentController:
         from dataclasses import replace
         state = replace(state, fusion=self.fusion.fuse(state, now))
         return self.decision.update(self.risk.update(state))
+
+
+class ScenarioController:
+    """Runs input adapters through existing modules, then the assessment pipeline."""
+    def __init__(self, manager):
+        self.manager = manager
+        self.reset_engines()
+
+    def reset_engines(self):
+        from simulation.scenario_inputs import ScenarioInputs
+        from modules.safedig_vision.utility_detector import UtilityDetector
+        from modules.safedig_precision.design_conflict import DesignConflictEngine
+        from core.safe_envelope import SafeEnvelopeEngine
+        from core.risk_engine import RiskEngine
+        from core.decision_engine import DecisionEngine
+        self.inputs = ScenarioInputs()
+        self.utility = UtilityDetector()
+        self.envelope = SafeEnvelopeEngine()
+        self.design = DesignConflictEngine()
+        self.assessment = AssessmentController(RiskEngine(), DecisionEngine())
+
+    def evaluate(self, timestamp=None, live_operator=None):
+        timestamp = monotonic() if timestamp is None else timestamp
+        state = self.inputs.sample(self.manager, timestamp, live_operator)
+        state = self.utility.update(state, state.machine)
+        state = self.envelope.update(state)
+        state = self.design.update(state)
+        return self.assessment.update(state, timestamp)

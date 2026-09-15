@@ -14,6 +14,7 @@ class GPRPanel(QFrame):
 
     def __init__(self, source: SensorSource, soil_options: list[tuple[str, str]]) -> None:
         super().__init__()
+        self.external_input = False
         self.source = source
         self.setObjectName("panel")
         self.setMinimumHeight(210)
@@ -72,8 +73,15 @@ class GPRPanel(QFrame):
         self.refresh()
 
     def refresh(self) -> None:
+        if self.external_input:
+            return
         now = monotonic()
         self.state = SafeDigState.from_sensor(self.source.read(now), now)
+        self.display_sensor(self.state)
+        self.state_changed.emit(self.state)
+
+    def display_sensor(self, state) -> None:
+        self.state = state
         sensor = self.state.sensor
         available = sensor is not None and self.state.sensor_health not in (SensorHealth.OFFLINE, SensorHealth.STALE)
         for name, field in (("Signal Quality", "signal_quality"), ("Confidence", "confidence"),
@@ -84,7 +92,6 @@ class GPRPanel(QFrame):
         self.action_label.setText(self.state.action_info)
         self.wave.samples = sensor.radargram if available else ()
         self.wave.update()
-        self.state_changed.emit(self.state)
 
     def display_utility(self, state: SafeDigState) -> None:
         utility = state.utility

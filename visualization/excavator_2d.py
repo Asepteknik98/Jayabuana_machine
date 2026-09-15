@@ -1,6 +1,6 @@
 """Deterministic display animation in logical pixels, not machine telemetry."""
 
-from math import cos, pi, sin
+from math import cos, pi, sin, acos, atan2, hypot
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
@@ -24,7 +24,7 @@ def excavator_pose(seconds: float) -> tuple[QPointF, QPointF, QPointF, float]:
     return pivot, elbow, bucket, 15 + 25 * sin(phase + 0.5)
 
 
-def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float) -> None:
+def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float, target=None) -> None:
     """Fit the complete side view into the available widget area."""
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -64,6 +64,14 @@ def draw_excavator(painter: QPainter, bounds: QRectF, seconds: float) -> None:
     ]))
 
     pivot, elbow, bucket, bucket_angle = excavator_pose(seconds)
+    if target is not None:
+        # Two-link display IK: the rendered tooth follows the same world position as assessment.
+        bucket_angle = 0.
+        bucket = QPointF(target.x_m*80-BUCKET_TIP[0], GROUND_Y+target.depth_m*80-BUCKET_TIP[1])
+        dx, dy = bucket.x()-pivot.x(), bucket.y()-pivot.y()
+        distance = hypot(dx,dy)
+        angle = atan2(dy,dx)-acos(max(-1.,min(1.,(220**2+distance**2-180**2)/(2*220*max(distance,.001)))))
+        elbow = pivot+QPointF(220*cos(angle),220*sin(angle))
     for start, end, width in [(pivot, elbow, 24), (elbow, bucket, 18)]:
         painter.setPen(QPen(QColor("#b98a23"), width + 5,
                             Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))

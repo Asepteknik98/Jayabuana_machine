@@ -22,14 +22,20 @@ class GPRSimulator:
     def set_soil(self, soil_type: str) -> None:
         self.soil_type = SoilType(soil_type)
 
-    def read(self, timestamp: float) -> SensorState | None:
+    def read(self, timestamp: float, *, exposure=None, utility_x_m=_TRUE_UTILITY_X_M,
+             utility_depth_m=ANOMALY_DEPTH_M, simulation_time=None) -> SensorState | None:
         if not isfinite(timestamp) or timestamp < 0:
             raise ValueError("Sampling time must be finite and non-negative")
         if not self.online:
             return None
         soil = SOIL_PRESETS[self.soil_type]
-        proximity = (1 - cos(2 * pi * timestamp / SCAN_PERIOD_SECONDS)) / 2
+        phase_time = timestamp if simulation_time is None else simulation_time
+        proximity = (1 - cos(2 * pi * phase_time / SCAN_PERIOD_SECONDS)) / 2 if exposure is None else exposure
         anomaly = 0.12 + 0.80 * proximity * soil.signal_quality
+        # Partial scenario scan coverage reduces measurement confidence, not downstream risk.
+        confidence = soil.base_confidence
+        if exposure is not None and exposure > 0:
+            confidence *= .5 + .5 * exposure
         strength = soil.signal_quality * (0.50 + 0.40 * proximity)
         rows = []
         for row in range(32):
@@ -37,20 +43,20 @@ class GPRSimulator:
             values = []
             for column in range(48):
                 x = column / 47
-                response_depth = ANOMALY_DEPTH_M + 0.7 * (x - 0.5) ** 2
+                response_depth = utility_depth_m + 0.7 * (x - 0.5) ** 2
                 response = exp(-((depth - response_depth) / 0.09) ** 2)
                 response *= exp(-((x - 0.5) / 0.30) ** 2)
-                background = 0.07 + 0.05 * sin(column * 0.8 + row * 1.3 + timestamp)
+                background = 0.07 + 0.05 * sin(column * 0.8 + row * 1.3 + phase_time)
                 noise = (1 - soil.signal_quality) * 0.10 * (1 + sin(row * 2 + column))
                 values.append(min(1.0, max(0.0, background + noise + response * anomaly)))
             rows.append(tuple(values))
         return SensorState(
-            self.soil_type.value, soil.signal_quality, soil.base_confidence,
+            self.soil_type.value, soil.signal_quality, confidence,
             strength, anomaly, anomaly >= ANOMALY_THRESHOLD,
             SensorHealth.VALID if soil.signal_quality >= DEGRADED_QUALITY else SensorHealth.DEGRADED,
             timestamp, tuple(rows),
             # Stable soil-dependent measurement error; truth stays in simulator.
-            estimated_x_m=_TRUE_UTILITY_X_M + 0.04 * (1 - soil.signal_quality),
-            estimated_z_m=-(ANOMALY_DEPTH_M + 0.02 + 0.05 * (1 - soil.signal_quality)),
+            estimated_x_m=utility_x_m + 0.04 * (1 - soil.signal_quality),
+            estimated_z_m=-(utility_depth_m + 0.02 + 0.05 * (1 - soil.signal_quality)),
             response_profile=_DEMO_RESPONSE_PROFILE,
         )

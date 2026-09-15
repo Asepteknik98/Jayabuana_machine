@@ -51,6 +51,14 @@ class DesignConflictEngine:
         right = machine.excavation_center_x_m + machine.target_width_m / 2
         bottom = -machine.target_depth_m
         result = replace(result,left_x_m=left,right_x_m=right,bottom_z_m=bottom)
+        sensor = state.sensor
+        if (sensor and utility and not utility.detected and not sensor.anomaly_detected
+                and sensor.anomaly_score < .4 and sensor.confidence >= MIN_RELIABLE_CONFIDENCE
+                and state.sensor_health == SensorHealth.VALID and sensor.sensor_health == SensorHealth.VALID
+                and utility.sensor_health == SensorHealth.VALID):
+            return replace(state, design_conflict=replace(result, status=ConflictStatus.NO_CONFLICT,
+                valid=True, verification_required=False, timestamp=sensor.timestamp,
+                reason="No significant utility response in current valid observation; not proof of absence."))
         if (utility is None or envelope is None or not utility.valid or not utility.detected
                 or not envelope.valid or state.sensor_health in (SensorHealth.OFFLINE,SensorHealth.STALE)
                 or utility.sensor_health in (SensorHealth.OFFLINE,SensorHealth.STALE)):
