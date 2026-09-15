@@ -75,7 +75,7 @@ class CameraPanel(QFrame):
         self.preview.status_text = "SIMULATED GUARDIAN INPUT" if simulated else self.status_label.text() + " / LIVE CAMERA"
         self.preview.detail_text = "GUARDIAN SOURCE: SIMULATED DEMO" if simulated else f"Face: {state.face_status} | Count: {count}"
         self.guardian_panel.display(state)
-        fatigue=f'{state.fatigue_score:.0f} {state.fatigue_level}' if state.fatigue_valid else 'UNKNOWN'
+        fatigue=f'{state.fatigue_score:.0f} / 100 {state.fatigue_level}' if state.fatigue_valid else 'UNKNOWN'
         attention=f'{state.attention_score:.0%}' if state.attention_score is not None else 'UNKNOWN'
         self.preview.analysis_text=f'Fatigue: {fatigue} | Attention: {attention}'
         if online and rgb_frame is not None and not simulated:

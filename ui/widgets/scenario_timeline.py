@@ -13,6 +13,7 @@ class ScenarioTimeline(QWidget):
 
     def __init__(self):
         super().__init__()
+        self._event_signature = None
         layout = QVBoxLayout(self);layout.setContentsMargins(0,0,0,0);layout.setSpacing(3)
         row = QHBoxLayout();layout.addLayout(row)
         self.scenarios = QComboBox()
@@ -50,6 +51,10 @@ class ScenarioTimeline(QWidget):
         self.start.setEnabled(manager.definition is not None)
         self.pause.setEnabled(state.status in ("RUNNING", "PAUSED"))
         self.reset.setEnabled(manager.definition is not None)
+        signature=(state.scenario_id,state.status,state.current_event_index,
+            tuple((event["time_s"],event["type"]) for event in manager.definition["events"]) if manager.definition else None)
+        if signature == self._event_signature:return
+        self._event_signature=signature
         self.events.clear()
         if not manager.definition:
             self.events.addItem("SCENARIO LOAD ERROR / UNAVAILABLE")

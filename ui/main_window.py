@@ -1,11 +1,12 @@
-"""Base industrial HMI with static module placeholders."""
+"""MVP-0 engineering and presentation views over the same SafeDig state."""
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QScrollArea, QTabWidget, QVBoxLayout, QWidget,
+    QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QScrollArea, QStackedWidget, QComboBox, QHBoxLayout, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
+from config.simulation_config import SIMULATION_DT
 from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
@@ -19,6 +20,7 @@ from simulation.scenario_manager import ScenarioManager
 from ui.widgets.scenario_timeline import ScenarioTimeline
 from ui.widgets.experiment_panel import ExperimentPanel
 from ui.widgets.risk_panel import RiskPanel
+from ui.widgets.presentation_panel import PresentationPanel, SystemHealth
 from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
 from ui.widgets.precision_panel import PrecisionPanel
@@ -53,6 +55,10 @@ class MainWindow(QMainWindow):
     def __init__(self, start_camera: bool = True) -> None:
         super().__init__()
         self.scenario_active = False
+        self._camera_enabled = start_camera
+        self._closed = False
+        self.presentation_stacks = []
+        self.presentation_cards = []
         self.live_operator = None
         self.live_frame = None
         self.setWindowTitle(APP_NAME)
@@ -62,12 +68,14 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(20, 12, 20, 12)
+        layout.setSpacing(8)
 
         title = QLabel(APP_NAME)
         title.setObjectName("appTitle")
-        layout.addWidget(title)
+        heading_row=QHBoxLayout();heading_row.addWidget(title,1)
+        self.view_mode=QComboBox();self.view_mode.addItems(["PRESENTATION MODE","ENGINEERING MODE"])
+        heading_row.addWidget(self.view_mode);layout.addLayout(heading_row)
         tagline = QLabel(TAGLINE)
         tagline.setObjectName("tagline")
         layout.addWidget(tagline)
@@ -83,13 +91,16 @@ class MainWindow(QMainWindow):
         self.scenario_panel.display(self.scenario_manager)
         self.scenario_panel.source_label.setText("GUARDIAN SOURCE: LIVE CAMERA | Select START for scenario inputs")
         self.scenario_timer = QTimer(self)
-        self.scenario_timer.setInterval(100)
+        self.scenario_timer.setInterval(round(SIMULATION_DT*1000))
         self.scenario_timer.timeout.connect(self._scenario_step)
         self.scenario_panel.selected.connect(self._scenario_load)
         self.scenario_panel.start_requested.connect(self._scenario_start)
         self.scenario_panel.pause_requested.connect(self._scenario_pause)
         self.scenario_panel.reset_requested.connect(self._scenario_reset)
         self.scenario_panel.mode_changed.connect(self._scenario_mode)
+
+        self.system_health = SystemHealth()
+        layout.addWidget(self.system_health)
 
         grid = QGridLayout()
         grid.setSpacing(14)
@@ -104,16 +115,17 @@ class MainWindow(QMainWindow):
         ])
         self.gpr_panel.soil_selected.connect(self.gpr_source.set_soil)
         self.gpr_panel.setMinimumHeight(120)
-        grid.addWidget(self.gpr_panel, 0, 0)
+        grid.addWidget(self._presentation_stack(self.gpr_panel,"SafeDig Vision"), 0, 0)
         grid.setRowStretch(0, 3)
         self.precision_panel = PrecisionPanel()
         precision_scroll = QScrollArea()
         precision_scroll.setWidgetResizable(True)
         precision_scroll.setWidget(self.precision_panel)
-        grid.addWidget(precision_scroll, 1, 0)
-        grid.setRowStretch(1, 2)
+        grid.addWidget(self._presentation_stack(precision_scroll,"SafeDig Precision"), 1, 0)
+        grid.setRowStretch(1, 3)
         self.camera_panel = CameraPanel()
-        grid.addWidget(self.camera_panel, 2, 0)
+        grid.addWidget(self._presentation_stack(self.camera_panel,"SafeDig Guardian"), 2, 0)
+        grid.setRowStretch(2,3)
         excavation_panel = make_panel(
             "Excavation View", "2D workspace • SIMULATED MOTION", "",
         )
@@ -136,7 +148,7 @@ class MainWindow(QMainWindow):
         self.risk_panel = RiskPanel()
         self.risk_score_label = self.risk_panel.score_label
         self.risk_status_label = self.risk_panel.level_label
-        sensor_previews = QTabWidget()
+        self.sensor_previews = sensor_previews = QTabWidget()
         self.experiment_panel = ExperimentPanel()
         sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
         sensor_previews.addTab(self.camera_panel.preview, "Operator Camera")
@@ -174,12 +186,31 @@ class MainWindow(QMainWindow):
                 padding: 12px; font-size: 22px; font-weight: 700; }
         """)
         self.guardian_controller = GuardianController(self)
-        QApplication.instance().aboutToQuit.connect(self.guardian_controller.stop)
-        QApplication.instance().aboutToQuit.connect(lambda: self.scenario_controller.recorder.finalize("ABORTED"))
+        QApplication.instance().aboutToQuit.connect(self._shutdown)
         self.guardian_controller.observation_ready.connect(self._update_operator)
         self.camera_panel.retry_requested.connect(self.guardian_controller.start)
-        if start_camera:
-            self.guardian_controller.start()
+        self.view_mode.currentIndexChanged.connect(self._presentation_mode)
+        self._scenario_reset()
+        self._presentation_mode(0)
+
+
+    def _presentation_stack(self, engineering_widget, title):
+        stack=QStackedWidget();card=PresentationPanel(title)
+        stack.addWidget(card);stack.addWidget(engineering_widget)
+        self.presentation_stacks.append(stack);self.presentation_cards.append(card)
+        return stack
+
+    def _presentation_mode(self, index):
+        enabled=index==0
+        for stack in self.presentation_stacks:stack.setCurrentIndex(0 if enabled else 1)
+        self.risk_panel.set_presentation(enabled)
+        self.decision_panel.set_presentation(enabled)
+        self.decision_panel.display(self.safe_dig_state.decision)
+        # Fault scenarios remain available in Engineering Mode; no source labels are hidden.
+        combo=self.scenario_panel.scenarios
+        for row in range(combo.count()):
+            is_fault="fault_" in (combo.itemData(row) or "")
+            combo.view().setRowHidden(row,enabled and is_fault and row!=combo.currentIndex())
 
     def _update_utility(self, _event=None) -> None:
         if self.scenario_active:
@@ -266,7 +297,7 @@ class MainWindow(QMainWindow):
         self.scenario_panel.display(self.scenario_manager)
 
     def _scenario_reset(self):
-        self.scenario_controller.recorder.finalize("ABORTED")
+        self.scenario_controller.recorder.reset()
         self.scenario_timer.stop()
         if self.scenario_manager.definition:
             self._scenario_activate()
@@ -279,6 +310,11 @@ class MainWindow(QMainWindow):
         running = self.scenario_manager.state.status == "RUNNING"
         self.scenario_controller.recorder.finalize("ABORTED")
         self.scenario_manager.set_demo_mode(demo)
+        if demo:
+            self.guardian_controller.stop()
+            self.live_operator = self.live_frame = None
+        elif self._camera_enabled and self.guardian_controller._process is None:
+            self.guardian_controller.start()
         if self.scenario_active and self.scenario_manager.definition:
             self._scenario_reset()
             if running:
@@ -318,11 +354,19 @@ class MainWindow(QMainWindow):
             ("SIMULATED DEMO" if inputs.guardian_source == "SIMULATED" else "LIVE CAMERA / " + inputs.guardian_source))
         self.scenario_panel.display(self.scenario_manager)
         self.experiment_panel.display(self.scenario_controller.recorder)
+        self.system_health.display(self.safe_dig_state)
+        for card,domain in zip(self.presentation_cards,("vision","precision","guardian")):
+            card.display(self.safe_dig_state,domain,inputs.guardian_source)
         if self.scenario_controller.recorder.error:
-            self.scenario_panel.source_label.setText("DATA RECORDING ERROR - demo remains active; see Experiment Summary")
+            self.scenario_panel.source_label.setText(self.scenario_panel.source_label.text()+" | DATA RECORDING ERROR")
+
+    def _shutdown(self):
+        if self._closed:return
+        self._closed=True
+        self.scenario_controller.recorder.finalize("ABORTED")
+        for timer in self.findChildren(QTimer):timer.stop()
+        self.guardian_controller.stop()
 
     def closeEvent(self, event) -> None:
-        self.scenario_controller.recorder.finalize("ABORTED")
-        self.scenario_timer.stop()
-        self.guardian_controller.stop()
+        self._shutdown()
         super().closeEvent(event)

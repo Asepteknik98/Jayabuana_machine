@@ -17,7 +17,7 @@ from evaluation.experiment_evaluator import ExperimentEvaluator
 from services.logging_service import EventLogger, telemetry
 
 OUTPUT_DIRECTORY = Path(__file__).resolve().parents[1] / "output" / "experiments"
-SNAPSHOT_INTERVAL_S = .5
+from config.simulation_config import TELEMETRY_INTERVAL_S as SNAPSHOT_INTERVAL_S
 
 
 def json_value(value):
@@ -56,7 +56,7 @@ class DataRecorder:
         self.directory = self.output_directory / experiment_id
         self.truth = GroundTruth.from_scenario(scenario,monotonic())
         self.evaluator = ExperimentEvaluator(self.truth)
-        self.configuration = dict(configuration_version="MVP0_STAGE15_V1",risk_weights=dict(WEIGHTS),
+        self.configuration = dict(configuration_version="MVP0_FINAL_V1",risk_weights=dict(WEIGHTS),
             scenario_sha256=hashlib.sha256(json.dumps(scenario,sort_keys=True).encode()).hexdigest(),
             scenario=scenario)
         self.active = True
@@ -127,3 +127,14 @@ class DataRecorder:
         except (OSError, ValueError, TypeError) as error:
             self.error = "DATA RECORDING ERROR: " + str(error)
         return self.summary
+
+    def reset(self):
+        """Finalize an active run, then clear in-memory experiment state for baseline."""
+        self.finalize("ABORTED")
+        self.session=None
+        self.summary=None
+        self.error=""
+        self.rows=[]
+        self.events=EventLogger()
+        self.last_time=0.
+        if hasattr(self,"evaluator"):self.evaluator.history.clear()

@@ -5,7 +5,7 @@ from math import isfinite
 from pathlib import Path
 from time import monotonic
 
-SIMULATION_DT = .1
+from config.simulation_config import SIMULATION_DT
 SCENARIO_DIRECTORY = Path(__file__).resolve().parent / "scenarios"
 INPUT_DEFAULTS = dict(bucket_x_m=5., bucket_depth_m=.2, fatigue=20., attention=.9,
                       exposure=0., plan_center_x_m=4.8)

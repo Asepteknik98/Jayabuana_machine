@@ -3,14 +3,16 @@
 from PySide6.QtWidgets import QFrame,QGridLayout,QLabel
 from core.decision_engine import DecisionState
 
-ACTION_COLORS = {"NORMAL":"#4cde9a", "WARN":"#efc34a", "SLOW":"#ff8c42",
-                 "VERIFY":"#ffb347", "RESTRICT":"#ff5353"}
+from ui.status_style import COLORS
+
+ACTION_COLORS = {key: COLORS[key] for key in ("NORMAL","WARN","SLOW","VERIFY","RESTRICT")}
 
 
 class StatusIndicator(QFrame):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("panel")
+        self.presentation = False
         layout=QGridLayout(self);layout.setContentsMargins(12,8,12,8);layout.setSpacing(4)
         title=QLabel("AI DECISION & ASSISTANCE • SOFTWARE RECOMMENDATION ONLY")
         title.setObjectName("muted");title.setWordWrap(True);layout.addWidget(title,0,0,1,3)
@@ -25,8 +27,13 @@ class StatusIndicator(QFrame):
 
     def display(self, decision: DecisionState) -> None:
         self.action_label.setText("ACTION: " + decision.action.value)
-        self.action_label.setStyleSheet(f"color:{ACTION_COLORS[decision.action.value]};font-size:18px;font-weight:600;")
+        self.action_label.setStyleSheet(f"color:{ACTION_COLORS[decision.action.value]};font-size:{26 if self.presentation else 18}px;font-weight:600;")
         self.message_label.setText(decision.message)
         self.reason_label.setText("Reason: " + decision.reason)
         self.guidance_label.setText("Speed Guidance: " + decision.speed_guidance)
         self.verification_label.setText("Verification: " + ("REQUIRED" if decision.verification_required else "NOT REQUESTED"))
+
+    def set_presentation(self, enabled):
+        self.presentation=enabled
+        self.guidance_label.setVisible(not enabled)
+        self.message_label.setStyleSheet("font-size:18px;" if enabled else "")

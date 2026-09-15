@@ -12,12 +12,19 @@ class ExperimentPanel(QWidget):
 
     def display(self, recorder):
         session=recorder.session
-        if session is None:return
+        if session is None:
+            self.label.setText("PROTOTYPE / SIMULATION EVALUATION\nSYSTEM READY / No active experiment")
+            self.label.setToolTip("")
+            return
         lines=["PROTOTYPE / SIMULATION EVALUATION",session.experiment_id,session.scenario_name,
             f"{session.result_status} | {session.duration_s:.1f} s | Events: {len(recorder.events.events)}"]
         summary=recorder.summary
         def show(value,unit=""):
-            return "N/A" if value is None else f"{value:.3f}{unit}" if isinstance(value,(int,float)) else str(value)
+            if value is None:return "N/A"
+            if not isinstance(value,(int,float)):return str(value)
+            if unit==" ms":return f"{value:.1f}{unit}"
+            if not unit:return f"{value:.0f}"
+            return f"{value:.2f}{unit}"
         if summary:
             detection=summary["detection"];risk=summary["risk"];latency=summary["latency"]
             metadata_lines = lines

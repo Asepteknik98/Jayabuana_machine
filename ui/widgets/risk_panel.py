@@ -23,12 +23,12 @@ class RiskPanel(QFrame):
         self.gauge=RiskGauge();layout.addWidget(self.gauge)
         self.data_label=QLabel();self.data_label.setWordWrap(True);self.data_label.setObjectName("muted")
         layout.addWidget(self.data_label)
-        grid=QGridLayout();self.values={}
+        self.breakdown=QWidget();grid=QGridLayout(self.breakdown);self.values={}
         for row,(key,name) in enumerate((("utility","Utility Risk"),("confidence","Confidence Risk"),
                                         ("velocity","Velocity Risk"),("design","Design Conflict"),("fatigue","Fatigue"))):
             caption=QLabel(name);caption.setObjectName("muted");grid.addWidget(caption,row,0)
             value=QLabel();value.setStyleSheet('font-size:12px;');grid.addWidget(value,row,1);self.values[key]=value
-        layout.addLayout(grid)
+        layout.addWidget(self.breakdown)
         self.driver_label=QLabel();self.driver_label.setWordWrap(True);layout.addWidget(self.driver_label)
         self.verification_label=QLabel();self.verification_label.setWordWrap(True)
         self.verification_label.setObjectName("muted");layout.addWidget(self.verification_label)
@@ -53,3 +53,7 @@ class RiskPanel(QFrame):
             self.values[key].setText(f"{component:.0%} | +{points:.1f}" if component is not None and points is not None else "N/A")
         self.driver_label.setText(f"PRIMARY DRIVER\n{risk.primary_risk_driver}")
         self.verification_label.setText("SECONDARY VERIFICATION REQUIRED" if risk.verification_required else "")
+
+    def set_presentation(self, enabled):
+        self.breakdown.setVisible(not enabled)
+        self.score_label.setStyleSheet("font-size:56px;font-weight:700;" if enabled else "")

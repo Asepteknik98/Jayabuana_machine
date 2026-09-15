@@ -2,7 +2,9 @@
 
 from PySide6.QtWidgets import QProgressBar
 
-RISK_COLORS = {"SAFE": "#4cde9a", "CAUTION": "#efc34a", "HIGH": "#ff8c42", "CRITICAL": "#ff5353"}
+from ui.status_style import COLORS
+
+RISK_COLORS = {key: COLORS[key] for key in ("SAFE","CAUTION","HIGH","CRITICAL")}
 
 
 class RiskGauge(QProgressBar):

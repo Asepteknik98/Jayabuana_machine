@@ -1,5 +1,6 @@
 """Simulation adapters. Ground truth stays upstream of the existing detector."""
 from dataclasses import replace
+import logging
 from adapters.sensor_source import SafeDigState, SensorHealth
 from domain.operator_state import OperatorState
 from modules.safedig_vision.gpr_simulator import GPRSimulator
@@ -13,6 +14,7 @@ class ScenarioInputs:
 
     def __init__(self):
         self.gpr = GPRSimulator()
+        self._gpr_error = ""
         self.excavator = ExcavatorSimulator()
         self.gnss = GNSSSimulator()
         from simulation.fault_injection import FaultInjectionEngine
@@ -22,8 +24,16 @@ class ScenarioInputs:
         data, values = manager.definition, manager.inputs()
         self.gpr.set_soil(data["soil"]["type"])
         truth = data["utility_ground_truth"]
-        sensor = self.gpr.read(timestamp, exposure=values["exposure"] if truth["enabled"] else 0.,
-            utility_x_m=truth["x_m"], utility_depth_m=truth["depth_m"], simulation_time=manager.state.elapsed_time_s)
+        try:
+            sensor = self.gpr.read(timestamp, exposure=values["exposure"] if truth["enabled"] else 0.,
+                utility_x_m=truth["x_m"], utility_depth_m=truth["depth_m"], simulation_time=manager.state.elapsed_time_s)
+            if self._gpr_error:logging.getLogger("safedig").info("GPR simulator recovered")
+            self._gpr_error = ""
+        except (OSError, ValueError, RuntimeError, ArithmeticError) as error:
+            if str(error) != self._gpr_error:
+                logging.getLogger("safedig").error("GPR SIMULATOR UNAVAILABLE: %s",error)
+            self._gpr_error = str(error)
+            sensor = None
         position, geometry = self.excavator.sample(values, data["excavation"], manager.state.elapsed_time_s)
         machine = machine_state(position, geometry, values["plan_center_x_m"], timestamp)
         operator = live_operator

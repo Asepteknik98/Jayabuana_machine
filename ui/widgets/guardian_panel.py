@@ -2,7 +2,9 @@
 
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QGridLayout,QLabel,QProgressBar
 
-LEVEL_COLORS = {"NORMAL":"#4cde9a","ELEVATED":"#efc34a","HIGH":"#ff5353","UNKNOWN":"#a1adba"}
+from ui.status_style import COLORS
+
+LEVEL_COLORS = {"NORMAL":COLORS["NORMAL"],"ELEVATED":COLORS["CAUTION"],"HIGH":COLORS["HIGH"],"UNKNOWN":COLORS["UNKNOWN"]}
 
 
 class GuardianPanel(QWidget):
@@ -40,7 +42,7 @@ class GuardianPanel(QWidget):
         for bar,value,label in ((self.attention_bar,None if state.attention_score is None else state.attention_score*100,'Attention'),
                                 (self.fatigue_bar,state.fatigue_score,'Fatigue')):
             bar.setValue(0 if value is None else round(value))
-            bar.setFormat(label+': UNKNOWN' if value is None else label+': %v%')
+            bar.setFormat(label+': UNKNOWN' if value is None else 'Fatigue: %v / 100' if label=='Fatigue' else 'Attention: %v%')
         confidence='--' if state.fatigue_confidence is None else f'{state.fatigue_confidence:.0%}'
         self.indicator.setText(f'Primary: {state.primary_fatigue_indicator}\nEstimate confidence: {confidence}')
 

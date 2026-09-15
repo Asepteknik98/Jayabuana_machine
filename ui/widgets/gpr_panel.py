@@ -1,6 +1,7 @@
 """Read a common source at 5 Hz; display prepared sensor state."""
 
 from time import monotonic
+import logging
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QComboBox, QFrame, QGridLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
@@ -15,6 +16,7 @@ class GPRPanel(QFrame):
     def __init__(self, source: SensorSource, soil_options: list[tuple[str, str]]) -> None:
         super().__init__()
         self.external_input = False
+        self._source_error = ""
         self.source = source
         self.setObjectName("panel")
         self.setMinimumHeight(210)
@@ -76,7 +78,15 @@ class GPRPanel(QFrame):
         if self.external_input:
             return
         now = monotonic()
-        self.state = SafeDigState.from_sensor(self.source.read(now), now)
+        try:
+            sensor = self.source.read(now)
+            self._source_error = ""
+        except (OSError, ValueError, RuntimeError, ArithmeticError) as error:
+            if str(error) != self._source_error:
+                logging.getLogger("safedig").error("SUBSURFACE SOURCE UNAVAILABLE: %s",error)
+            self._source_error = str(error)
+            sensor = None
+        self.state = SafeDigState.from_sensor(sensor, now)
         self.display_sensor(self.state)
         self.state_changed.emit(self.state)
 
@@ -109,7 +119,8 @@ class GPRPanel(QFrame):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self.refresh()
-        self._timer.start()
+        if not self.external_input:
+            self._timer.start()
 
     def hideEvent(self, event) -> None:
         self._timer.stop()
