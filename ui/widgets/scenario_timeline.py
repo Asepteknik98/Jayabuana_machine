@@ -1,6 +1,6 @@
 """Compact scenario controls and event status; no assessment logic."""
 from PySide6.QtCore import Signal, Qt, QRectF, QPointF
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QProgressBar, QListWidget, QListView
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QProgressBar, QButtonGroup,QFrame,QStyle
 from PySide6.QtGui import QColor, QPainter, QPen
 from simulation.scenario_manager import SCENARIO_DIRECTORY
 
@@ -28,7 +28,7 @@ class TimelineCanvas(QWidget):
             p.drawText(QRectF(i*step+5,27,step-10,self.height()-27),Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTop|Qt.TextFlag.TextWordWrap,text)
         p.end()
 
-class ScenarioTimeline(QWidget):
+class ScenarioTimeline(QFrame):
     selected = Signal(str)
     start_requested = Signal()
     pause_requested = Signal()
@@ -37,8 +37,9 @@ class ScenarioTimeline(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("panel")
         self._event_signature = None
-        layout = QVBoxLayout(self);layout.setContentsMargins(0,0,0,0);layout.setSpacing(3)
+        layout = QVBoxLayout(self);layout.setContentsMargins(12,8,12,8);layout.setSpacing(4)
         self.controls=QWidget();row=QHBoxLayout(self.controls);row.setContentsMargins(0,0,0,0)
         self.scenarios = QComboBox()
         for key, name in (("normal_operation","Normal Operation"),("utility_detected","Utility Detected"),
@@ -53,12 +54,19 @@ class ScenarioTimeline(QWidget):
                 name="UNAVAILABLE: "+path.stem
             self.scenarios.addItem(name,str(path))
         self.scenarios.setCurrentIndex(5);row.addWidget(self.scenarios)
-        self.mode = QComboBox();self.mode.addItems(["DEMO MODE", "LIVE MODE"]);row.addWidget(self.mode)
+        self.mode = QComboBox(self);self.mode.addItems(["DEMO MODE", "LIVE MODE"]);self.mode.hide()
+        self.mode_group=QButtonGroup(self)
+        for index,name in enumerate(("DEMO MODE","LIVE MODE")):
+            button=QPushButton(name);button.setCheckable(True);button.setChecked(index==0)
+            self.mode_group.addButton(button,index);row.insertWidget(index,button)
+        self.mode_group.idClicked.connect(self.mode.setCurrentIndex)
+        self.mode.currentIndexChanged.connect(lambda index:self.mode_group.button(index).setChecked(True))
         self.start = QPushButton("START");self.pause = QPushButton("PAUSE");self.reset = QPushButton("RESET")
-        for button in (self.start,self.pause,self.reset):row.addWidget(button)
+        for button,icon in ((self.start,QStyle.StandardPixmap.SP_MediaPlay),(self.pause,QStyle.StandardPixmap.SP_MediaPause),(self.reset,QStyle.StandardPixmap.SP_BrowserReload)):
+            button.setIcon(self.style().standardIcon(icon));button.setMinimumWidth(88);row.addWidget(button)
         self.start.setObjectName("startButton")
         info=QHBoxLayout();layout.addLayout(info)
-        caption=QLabel("SCENARIO TIMELINE");caption.setObjectName("muted");info.addWidget(caption)
+        caption=QLabel("Scenario Timeline");caption.setStyleSheet("font-size:15px;color:#99e6ff;font-weight:600;");info.addWidget(caption)
         self.time_label=QLabel();info.addWidget(self.time_label,1)
         self.next_label=QLabel();self.next_label.setObjectName("muted");info.addWidget(self.next_label)
         self.source_label = QLabel();self.source_label.setObjectName("muted");layout.addWidget(self.source_label)
@@ -87,4 +95,4 @@ class ScenarioTimeline(QWidget):
         self.events.complete=state.status=="COMPLETED";self.events.update()
         next_index=state.current_event_index+1
         upcoming=events[next_index] if next_index<len(events) and state.status!="COMPLETED" else None
-        self.next_label.setText("NEXT: "+upcoming["type"].replace("_"," ").title() if upcoming else "END OF TIMELINE")
+        self.next_label.setText("NEXT: "+upcoming["type"].replace("_"," ").title()+f" ({upcoming['time_s']:g}s)" if upcoming else "END OF TIMELINE")

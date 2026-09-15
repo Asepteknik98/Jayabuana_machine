@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
 from config.simulation_config import SIMULATION_DT
 from ui.theme import STYLE
+from ui.widgets.hmi_icon import HmiIcon
 from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
 from modules.safedig_vision.utility_model import MachineState
@@ -39,7 +40,7 @@ def make_panel(title: str, subtitle: str, message: str) -> QFrame:
     heading = QLabel(title)
     heading.setObjectName("panelTitle")
     heading.setWordWrap(True)
-    layout.addWidget(heading)
+    heading_row=QHBoxLayout();heading_row.addWidget(HmiIcon("excavator",40));heading_row.addWidget(heading,1);layout.addLayout(heading_row)
     description = QLabel(subtitle)
     description.setObjectName("muted")
     description.setWordWrap(True)
@@ -62,7 +63,8 @@ class MainWindow(QMainWindow):
         self.presentation_cards = []
         self.live_operator = None
         self.live_frame = None
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle("SafeDig AI Copilot")
+        QApplication.instance().setApplicationDisplayName("SafeDig AI Copilot")
         self.resize(*WINDOW_SIZE)
         self.setMinimumSize(*MINIMUM_SIZE)
 
@@ -74,7 +76,7 @@ class MainWindow(QMainWindow):
 
         header = QHBoxLayout()
         brand = QVBoxLayout()
-        title = QLabel(APP_NAME); title.setObjectName("appTitle")
+        title = QLabel("SafeDig AI Copilot"); title.setObjectName("appTitle")
         tagline = QLabel(TAGLINE); tagline.setObjectName("tagline")
         brand.addWidget(title); brand.addWidget(tagline)
         header.addLayout(brand, 1)
@@ -111,8 +113,8 @@ class MainWindow(QMainWindow):
         grid = QGridLayout()
         grid.setSpacing(12)
         grid.setColumnStretch(0, 24)
-        grid.setColumnStretch(1, 52)
-        grid.setColumnStretch(2, 24)
+        grid.setColumnStretch(1, 48)
+        grid.setColumnStretch(2, 28)
         for row in range(3):
             grid.setRowStretch(row, 1)
         self.gpr_source = GPRSimulator()

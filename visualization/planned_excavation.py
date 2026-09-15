@@ -34,9 +34,20 @@ def draw_planned_excavation(painter: QPainter,bounds: QRectF,state: SafeDigState
         painter.fillPath(trench.intersected(zone),fill)
     font=painter.font();font.setPixelSize(12);painter.setFont(font)
     if presentation:
-        font.setPixelSize(15);painter.setFont(font);painter.setPen(QColor("#e4ecf4"))
-        painter.drawText(QPointF(28,440),f"TARGET DEPTH  {-result.bottom_z_m:.2f} m")
+        font.setPixelSize(15);painter.setFont(font)
+        def callout(y,caption,value,anchor):
+            box=QRectF(650,y,138,48)
+            painter.setPen(QPen(QColor("#eef6ff"),1,Qt.PenStyle.DashLine))
+            painter.drawLine(anchor,QPointF(638,anchor.y()))
+            painter.drawLine(QPointF(638,anchor.y()),QPointF(638,y+24))
+            painter.drawLine(QPointF(638,y+24),QPointF(650,y+24))
+            painter.fillRect(box,QColor(0,15,28,220))
+            painter.setPen(QColor("#eaf4ff"));painter.drawText(QPointF(658,y+17),caption)
+            value_font=painter.font();value_font.setPixelSize(20);value_font.setBold(True);painter.setFont(value_font)
+            painter.drawText(QPointF(658,y+39),f"{value:.2f} m");painter.setFont(font)
+        callout(466,"Target Depth",-result.bottom_z_m,rect.bottomRight())
         if state.machine and state.machine.current_depth_m is not None:
-            painter.drawText(QPointF(28,410),f"CURRENT DEPTH  {state.machine.current_depth_m:.2f} m")
+            machine=state.machine
+            callout(360,"Current Depth",machine.current_depth_m,world_to_scene(machine.bucket_x_m,machine.bucket_z_m))
     else:painter.drawText(rect.bottomLeft()+QPointF(0,18),f'TARGET {-result.bottom_z_m:.2f} m')
     painter.restore()

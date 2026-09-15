@@ -2,6 +2,7 @@
 from PySide6.QtCore import Qt,QRectF,QPointF
 from PySide6.QtGui import QPainter,QColor,QPen
 from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget,QHBoxLayout,QGridLayout,QProgressBar,QStackedWidget,QSizePolicy
+from ui.widgets.hmi_icon import HmiIcon
 from ui.status_style import COLORS,metres,percent
 from visualization.gpr_wave import GPRWave
 from modules.safedig_precision.depth_control import remaining_depth
@@ -10,7 +11,7 @@ class StatusBadge(QLabel):
     def display(self,text,color=None):
         color=color or COLORS.get(text,COLORS["UNKNOWN"])
         self.setText(text)
-        self.setStyleSheet(f"color:{color};background:#14273a;border:1px solid {color};border-radius:4px;padding:3px 7px;font-size:13px;font-weight:600;")
+        self.setStyleSheet(f"color:{color};background:#003d38;border:1px solid {color};border-radius:12px;padding:4px 10px;font-size:13px;font-weight:600;")
 
 class OperatorSilhouette(QWidget):
     def __init__(self):
@@ -18,10 +19,10 @@ class OperatorSilhouette(QWidget):
     def paintEvent(self,event):
         p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.translate(self.width()/2,self.height()/2);scale=min(self.width()/160,self.height()/100);p.scale(scale,scale)
-        p.setPen(QPen(QColor("#3b708a"),1.5));p.setBrush(QColor("#183b51"))
+        p.setPen(QPen(QColor("#a6ddff"),1.5));p.setBrush(QColor("#183b51"))
         p.drawRoundedRect(QRectF(-46,15,92,42),22,22)
         p.setBrush(QColor("#366279"));p.drawEllipse(QRectF(-21,-26,42,44))
-        p.setBrush(QColor("#e6b33c"));p.setPen(QPen(QColor("#e6b33c"),3))
+        p.setBrush(QColor("#214c68"));p.setPen(QPen(QColor("#a6ddff"),2))
         p.drawPie(QRectF(-30,-49,60,53),0,180*16);p.drawLine(QPointF(-35,-23),QPointF(35,-23))
         p.setPen(QPen(QColor("#0a1928"),3));p.drawLine(QPointF(0,-47),QPointF(0,-28));p.end()
 
@@ -30,7 +31,7 @@ class PresentationPanel(QFrame):
         super().__init__();self.setObjectName("panel")
         self.domain="vision" if "Vision" in title else "precision" if "Precision" in title else "guardian"
         layout=QVBoxLayout(self);layout.setContentsMargins(16,8,16,8);layout.setSpacing(4)
-        top=QHBoxLayout();heading=QLabel(title);heading.setObjectName("panelTitle");top.addWidget(heading,1)
+        top=QHBoxLayout();top.addWidget(HmiIcon(self.domain,28));heading=QLabel(title);heading.setObjectName("panelTitle");top.addWidget(heading,1)
         self.badge=StatusBadge();top.addWidget(self.badge);layout.addLayout(top)
         self.source=QLabel();self.source.setObjectName("muted");self.source.setWordWrap(True);layout.addWidget(self.source)
         self.value=QLabel();self.value.setWordWrap(True);self.value.setObjectName("metric")
@@ -42,20 +43,25 @@ class PresentationPanel(QFrame):
         else:
             self.visual=QStackedWidget();self.visual.addWidget(OperatorSilhouette())
             names=("Fatigue Score","Attention","Status")
+        self.guardian_bars={}
         grid=QGridLayout();grid.setHorizontalSpacing(8);grid.setVerticalSpacing(4)
         for row,name in enumerate(names):
-            caption=QLabel(name);caption.setObjectName("muted");grid.addWidget(caption,row,0)
-            label=QLabel("N/A");label.setAlignment(Qt.AlignmentFlag.AlignRight);label.setStyleSheet("font-size:19px;font-weight:600;")
+            caption=QLabel(name);caption.setObjectName("muted");grid.addWidget(caption,row*2 if self.domain in ("vision","guardian") else row,0)
+            label=QLabel("N/A");label.setAlignment(Qt.AlignmentFlag.AlignLeft if self.domain=="vision" else Qt.AlignmentFlag.AlignRight);label.setStyleSheet("font-size:19px;font-weight:600;")
             if name in ("Estimated Depth","Current Depth","Fatigue Score"):
                 label.setStyleSheet("font-size:24px;font-weight:600;")
-            grid.addWidget(label,row,1);self.values[name]=label
+            grid.addWidget(label,row*2+1 if self.domain=="vision" else row*2 if self.domain=="guardian" else row,0 if self.domain=="vision" else 1);self.values[name]=label
+            if self.domain=="guardian" and name in ("Fatigue Score","Attention"):
+                bar=QProgressBar();bar.setTextVisible(False);grid.addWidget(bar,row*2+1,0,1,2);self.guardian_bars[name]=bar
         if self.domain=="guardian":
             body=QHBoxLayout();body.addWidget(self.visual,2);body.addLayout(grid,3);layout.addLayout(body,1)
-        else:layout.addLayout(grid)
-        if self.domain=="vision":
-            self.confidence_bar=QProgressBar();self.confidence_bar.setTextVisible(False);layout.addWidget(self.confidence_bar)
-            self.wave=GPRWave();self.wave.setMinimumHeight(80);layout.addWidget(self.wave,1)
-        elif self.domain=="precision":layout.addStretch()
+        elif self.domain=="vision":
+            grid.setVerticalSpacing(0)
+            self.confidence_bar=QProgressBar();self.confidence_bar.setTextVisible(False);grid.addWidget(self.confidence_bar,6,0)
+            self.wave=GPRWave();self.wave.setMinimumHeight(135)
+            body=QHBoxLayout();body.setSpacing(12);body.addWidget(self.wave,5);body.addLayout(grid,4);layout.addLayout(body,1)
+        else:
+            layout.addLayout(grid);layout.addStretch()
         self.detail=QLabel();self.detail.setWordWrap(True);self.detail.setObjectName("muted");layout.addWidget(self.detail)
 
     def attach_preview(self,widget):
@@ -94,17 +100,20 @@ class PresentationPanel(QFrame):
             self.badge.display("ACTIVE" if valid else "OFFLINE" if not state.operator or not state.operator.camera_available else "UNKNOWN")
             self.values["Fatigue Score"].setText(f"{fusion.fatigue_score:.0f} / 100" if valid else "UNKNOWN")
             self.values["Attention"].setText(percent(fusion.attention_score if fusion and fusion.attention_available else None))
+            self.guardian_bars["Fatigue Score"].setValue(round(fusion.fatigue_score) if valid else 0)
+            self.guardian_bars["Attention"].setValue(round(fusion.attention_score*100) if fusion and fusion.attention_available else 0)
             level=state.operator.fatigue_level if valid else "UNKNOWN"
+            self.guardian_bars["Fatigue Score"].setStyleSheet("QProgressBar::chunk {background:"+{"NORMAL":"#00c58b","ELEVATED":"#ffbd32","HIGH":"#ff505d"}.get(level,"#718b9f")+";}")
             status={"NORMAL":"ALERT","ELEVATED":"ELEVATED","HIGH":"DROWSY"}.get(level,"UNKNOWN")
             self.values["Status"].setText(status);self.values["Status"].setStyleSheet("font-size:19px;font-weight:600;color:"+{"ALERT":"#4cde9a","ELEVATED":"#ff8c42","DROWSY":"#ff5353","UNKNOWN":"#94aec3"}[status]+";")
             self.detail.setText("PROTOTYPE ESTIMATE / NON-MEDICAL")
 
-class SystemHealth(QWidget):
+class SystemHealth(QFrame):
     def __init__(self):
-        super().__init__();layout=QHBoxLayout(self);layout.setContentsMargins(4,4,4,4);layout.setSpacing(12)
+        super().__init__();self.setObjectName("healthStrip");layout=QHBoxLayout(self);layout.setContentsMargins(12,8,12,8);layout.setSpacing(12)
         self.labels={}
         for name in ("VISION","PRECISION","GUARDIAN","FUSION","RISK ENGINE","DECISION ENGINE"):
-            label=QLabel(name);layout.addWidget(label,1);self.labels[name]=label
+            cell=QHBoxLayout();cell.addWidget(HmiIcon(name.lower().split()[0],24));label=QLabel(name);cell.addWidget(label,1);layout.addLayout(cell,1);self.labels[name]=label
     def display(self,state):
         fusion=state.fusion
         status={name:"OFFLINE" for name in self.labels}
