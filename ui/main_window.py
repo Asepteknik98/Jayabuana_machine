@@ -17,6 +17,7 @@ from ui.widgets.camera_panel import CameraPanel
 from core.app_controller import GuardianController, AssessmentController, ScenarioController
 from simulation.scenario_manager import ScenarioManager
 from ui.widgets.scenario_timeline import ScenarioTimeline
+from ui.widgets.experiment_panel import ExperimentPanel
 from ui.widgets.risk_panel import RiskPanel
 from dataclasses import replace
 from modules.safedig_precision.design_conflict import DesignConflictEngine, DEFAULT_TRENCH_CENTER_X_M
@@ -136,8 +137,10 @@ class MainWindow(QMainWindow):
         self.risk_score_label = self.risk_panel.score_label
         self.risk_status_label = self.risk_panel.level_label
         sensor_previews = QTabWidget()
+        self.experiment_panel = ExperimentPanel()
         sensor_previews.addTab(self.gpr_panel.wave, "GPR Scan")
         sensor_previews.addTab(self.camera_panel.preview, "Operator Camera")
+        sensor_previews.addTab(self.experiment_panel, "Experiment Summary")
         sensor_previews.setCurrentIndex(1)
         grid.addWidget(sensor_previews, 0, 2)
         grid.addWidget(self.risk_panel, 1, 2, 2, 1)
@@ -172,6 +175,7 @@ class MainWindow(QMainWindow):
         """)
         self.guardian_controller = GuardianController(self)
         QApplication.instance().aboutToQuit.connect(self.guardian_controller.stop)
+        QApplication.instance().aboutToQuit.connect(lambda: self.scenario_controller.recorder.finalize("ABORTED"))
         self.guardian_controller.observation_ready.connect(self._update_operator)
         self.camera_panel.retry_requested.connect(self.guardian_controller.start)
         if start_camera:
@@ -233,6 +237,7 @@ class MainWindow(QMainWindow):
         self.excavator_view._timer.stop()
 
     def _scenario_load(self, path):
+        self.scenario_controller.recorder.finalize("ABORTED")
         self.scenario_timer.stop()
         self.scenario_manager.load(path)
         self._scenario_reset()
@@ -244,6 +249,8 @@ class MainWindow(QMainWindow):
         self._scenario_activate()
         self.scenario_manager.start()
         if not paused:
+            self.scenario_controller.recorder.start(self.scenario_manager.definition,self.scenario_manager.state.demo_mode,
+                "SIMULATED" if self.scenario_manager.state.demo_mode else "LIVE" if self.live_operator and self.live_operator.camera_available else "OFFLINE")
             self.scenario_controller.reset_engines()
             self._scenario_render()
         self.scenario_timer.start()
@@ -259,6 +266,7 @@ class MainWindow(QMainWindow):
         self.scenario_panel.display(self.scenario_manager)
 
     def _scenario_reset(self):
+        self.scenario_controller.recorder.finalize("ABORTED")
         self.scenario_timer.stop()
         if self.scenario_manager.definition:
             self._scenario_activate()
@@ -268,10 +276,13 @@ class MainWindow(QMainWindow):
         self.scenario_panel.display(self.scenario_manager)
 
     def _scenario_mode(self, demo):
+        running = self.scenario_manager.state.status == "RUNNING"
+        self.scenario_controller.recorder.finalize("ABORTED")
         self.scenario_manager.set_demo_mode(demo)
         if self.scenario_active and self.scenario_manager.definition:
-            self.scenario_controller.reset_engines()
-            self._scenario_render()
+            self._scenario_reset()
+            if running:
+                self._scenario_start()
 
     def _scenario_step(self):
         self.scenario_manager.advance()
@@ -303,8 +314,12 @@ class MainWindow(QMainWindow):
         self.scenario_panel.source_label.setText("VISION: SIMULATED GPR | MACHINE: SIMULATED | GUARDIAN SOURCE: " +
             ("SIMULATED DEMO" if inputs.guardian_source == "SIMULATED" else "LIVE CAMERA / " + inputs.guardian_source))
         self.scenario_panel.display(self.scenario_manager)
+        self.experiment_panel.display(self.scenario_controller.recorder)
+        if self.scenario_controller.recorder.error:
+            self.scenario_panel.source_label.setText("DATA RECORDING ERROR - demo remains active; see Experiment Summary")
 
     def closeEvent(self, event) -> None:
+        self.scenario_controller.recorder.finalize("ABORTED")
         self.scenario_timer.stop()
         self.guardian_controller.stop()
         super().closeEvent(event)

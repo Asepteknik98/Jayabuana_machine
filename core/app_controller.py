@@ -2,7 +2,7 @@
 
 import multiprocessing as mp
 from queue import Empty
-from time import monotonic
+from time import monotonic, perf_counter
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from config.camera_config import CAMERA_INDEX, FRAME_STALE_SECONDS
@@ -90,14 +90,24 @@ class AssessmentController:
 
     def update(self, state, now=None):
         from dataclasses import replace
+        started = perf_counter()
         state = replace(state, fusion=self.fusion.fuse(state, now))
-        return self.decision.update(self.risk.update(state))
+        fused = perf_counter()
+        state = self.risk.update(state)
+        assessed = perf_counter()
+        state = self.decision.update(state)
+        decided = perf_counter()
+        self.latencies = dict(fusion_latency_ms=(fused-started)*1000,
+            risk_latency_ms=(assessed-fused)*1000, decision_latency_ms=(decided-assessed)*1000)
+        return state
 
 
 class ScenarioController:
     """Runs input adapters through existing modules, then the assessment pipeline."""
     def __init__(self, manager):
         self.manager = manager
+        from services.data_recorder import DataRecorder
+        self.recorder = DataRecorder()
         self.reset_engines()
 
     def reset_engines(self):
@@ -119,4 +129,8 @@ class ScenarioController:
         state = self.utility.update(state, state.machine)
         state = self.envelope.update(state)
         state = self.design.update(state)
-        return self.assessment.update(state, timestamp)
+        state = self.assessment.update(state, timestamp)
+        self.recorder.observe(state,self.manager.state.elapsed_time_s,self.assessment.latencies,self.inputs.guardian_source)
+        if self.manager.state.status == "COMPLETED":
+            self.recorder.finalize("COMPLETED")
+        return state
