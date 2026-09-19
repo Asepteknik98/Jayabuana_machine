@@ -31,4 +31,24 @@ QScrollBar:vertical { background:#062238; width:8px; }
 QScrollBar::handle:vertical { background:#365c76; min-height:24px; border-radius:4px; }
 QScrollBar::handle:vertical:hover { background:#527e99; }
 QToolTip { background:#102c43; color:#eaf5ff; border:1px solid #47728e; padding:6px 8px; font-size:13px; }
+/* Header-only styling: other cards and controls keep their existing theme. */
+QFrame#dashboardHeader, QWidget#headerControls { background:transparent; border:none; }
+QFrame#dashboardHeader QLabel#appTitle { font-size:28px; font-weight:700; }
+QFrame#dashboardHeader QLabel#tagline { color:#79c9cc; }
+QLabel#headerCaption { color:#91aabf; font-size:13px; font-weight:600; }
+QLabel#headerSystemStatus { color:#79cbb3; font-size:13px; }
+QFrame#headerModeSegment { background:#091c2c; border:1px solid #2b4b62; border-radius:7px; }
+QFrame#headerModeSegment QPushButton { background:transparent; border:1px solid transparent; border-radius:5px; padding:0px 8px; color:#a8bdcf; font-size:13px; }
+QFrame#headerModeSegment QPushButton:checked { background:#123c54; border-color:#4199b6; color:#e3f8ff; font-weight:600; }
+QFrame#headerModeSegment QPushButton:hover { background:#15354b; color:#e3f8ff; }
+QFrame#headerModeSegment QPushButton:focus { border-color:#80dfff; }
+QWidget#headerControls QPushButton { padding:0px 8px; }
+QComboBox#headerScenario, QComboBox#headerViewMode { background:#0b2134; border-color:#36566e; padding:0px 12px; }
+QComboBox#headerScenario:hover, QComboBox#headerViewMode:hover { border-color:#5fdcff; }
+QComboBox#headerScenario:focus, QComboBox#headerViewMode:focus { border-color:#80dfff; }
+QWidget#headerControls QPushButton#startButton { background:#124537; border-color:#388f70; color:#d6f8e7; }
+QWidget#headerControls QPushButton#startButton:hover { background:#1a6049; border-color:#63caa1; }
+QWidget#headerControls QPushButton#startButton:pressed { background:#0b352a; }
+QWidget#headerControls QPushButton#startButton:focus { border-color:#80dfff; }
+QWidget#headerControls QPushButton#startButton:disabled { background:#0a1b2a; border-color:#294154; color:#8399ac; }
 """

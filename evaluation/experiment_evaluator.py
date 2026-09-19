@@ -10,6 +10,7 @@ class ExperimentEvaluator:
         self.history = []
 
     def observe(self, row):
+        
         self.history.append(dict(row))
 
     def summarize(self, events, duration_s):

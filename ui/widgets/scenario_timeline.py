@@ -40,8 +40,23 @@ class ScenarioTimeline(QFrame):
         self.setObjectName("panel")
         self._event_signature = None
         layout = QVBoxLayout(self);layout.setContentsMargins(12,8,12,8);layout.setSpacing(4)
-        self.controls=QWidget();row=QHBoxLayout(self.controls);row.setContentsMargins(0,0,0,0)
+        self.controls=QWidget();self.controls.setObjectName("headerControls")
+        row=QHBoxLayout(self.controls);row.setContentsMargins(0,0,0,0);row.setSpacing(16)
+        mode_column=QVBoxLayout();mode_column.setSpacing(4)
+        mode_caption=QLabel("INPUT MODE");mode_caption.setObjectName("headerCaption");mode_column.addWidget(mode_caption)
+        mode_segment=QFrame();mode_segment.setObjectName("headerModeSegment");mode_segment.setFixedHeight(38)
+        mode_row=QHBoxLayout(mode_segment);mode_row.setContentsMargins(2,2,2,2);mode_row.setSpacing(2)
+        mode_column.addWidget(mode_segment);row.addLayout(mode_column)
+        scenario_column=QVBoxLayout();scenario_column.setSpacing(4)
+        scenario_caption=QLabel("SCENARIO");scenario_caption.setObjectName("headerCaption");scenario_column.addWidget(scenario_caption)
+        row.addLayout(scenario_column)
+        action_column=QVBoxLayout();action_column.setSpacing(4)
+        action_caption=QLabel("RUN CONTROLS");action_caption.setObjectName("headerCaption");action_column.addWidget(action_caption)
+        action_row=QHBoxLayout();action_row.setSpacing(8);action_column.addLayout(action_row);row.addLayout(action_column)
         self.scenarios = QComboBox()
+        self.scenarios.setObjectName("headerScenario")
+        self.scenarios.setMinimumWidth(220)
+        self.scenarios.setFixedHeight(38)
         for key, name in (("normal_operation","Normal Operation"),("utility_detected","Utility Detected"),
                 ("wet_clay","Wet Clay"),("design_conflict","Design Conflict"),("operator_drowsy","Operator Drowsy"),
                 ("critical_scenario","Critical Multimodal Demo")):
@@ -53,17 +68,18 @@ class ScenarioTimeline(QFrame):
             except (OSError,ValueError,KeyError):
                 name="UNAVAILABLE: "+path.stem
             self.scenarios.addItem(name,str(path))
-        self.scenarios.setCurrentIndex(5);row.addWidget(self.scenarios)
+        self.scenarios.setCurrentIndex(5);scenario_column.addWidget(self.scenarios)
         self.mode = QComboBox(self);self.mode.addItems(["DEMO MODE", "LIVE MODE"]);self.mode.hide()
         self.mode_group=QButtonGroup(self)
         for index,name in enumerate(("DEMO MODE","LIVE MODE")):
             button=QPushButton(name);button.setCheckable(True);button.setChecked(index==0)
-            self.mode_group.addButton(button,index);row.insertWidget(index,button)
+            button.setFixedSize(104,32)
+            self.mode_group.addButton(button,index);mode_row.addWidget(button)
         self.mode_group.idClicked.connect(self.mode.setCurrentIndex)
         self.mode.currentIndexChanged.connect(lambda index:self.mode_group.button(index).setChecked(True))
         self.start = QPushButton("START");self.pause = QPushButton("PAUSE");self.reset = QPushButton("RESET")
         for button,icon in ((self.start,QStyle.StandardPixmap.SP_MediaPlay),(self.pause,QStyle.StandardPixmap.SP_MediaPause),(self.reset,QStyle.StandardPixmap.SP_BrowserReload)):
-            button.setIcon(self.style().standardIcon(icon));button.setMinimumWidth(88);row.addWidget(button)
+            button.setIcon(self.style().standardIcon(icon));button.setFixedSize(100,38);action_row.addWidget(button)
         self.start.setObjectName("startButton")
         info=QHBoxLayout();layout.addLayout(info)
         caption=QLabel("Scenario Timeline");caption.setStyleSheet("font-size:15px;color:#99e6ff;font-weight:600;");info.addWidget(caption)
