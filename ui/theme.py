@@ -1,16 +1,23 @@
 """Central presentation palette and typography; no assessment configuration."""
+CARD_PADDING = (16, 8, 16, 8)
+CARD_GAP = 4
+CARD_HEADER_GAP = 8
+CARD_BORDER = "#294457"
+CARD_RADIUS = 8
+
 STYLE = """
 QMainWindow, QWidget { background:#06111f; color:#eaf5ff; font-family:'Segoe UI'; font-size:15px; }
-QFrame#panel { background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #092438,stop:1 #061725); border:1px solid #2b526c; border-radius:8px; }
+QFrame#panel { background:#091e2e; border:1px solid @card_border; border-radius:@card_radiuspx; }
 QFrame#healthStrip { background:#071c2c; border:1px solid #234359; border-radius:8px; }
-QWidget#riskContent { background:#071c2c; }
+QWidget#riskContent, QScrollArea#riskScroll, QWidget#riskViewport { background:#091e2e; border:none; }
+QWidget#cardBody, QStackedWidget#cardVisual { background:transparent; border:none; }
 QLabel { background:transparent; border:none; }
 QLabel#appTitle { font-size:30px; font-weight:700; }
 QLabel#tagline { color:#53d8d2; font-size:13px; font-weight:600; }
-QLabel#panelTitle { color:#96dfff; font-size:20px; font-weight:600; }
+QLabel#panelTitle { color:#b6e5f4; font-size:18px; font-weight:600; }
 QLabel#muted { color:#acc2d4; font-size:13px; }
 QLabel#metric { font-size:24px; font-weight:600; }
-QLabel#driver { background:#0b293f; border-radius:5px; padding:6px; font-weight:600; font-size:13px; }
+QLabel#driver { background:transparent; border-top:1px solid @card_border; border-radius:0px; padding:6px 0px 0px 0px; font-weight:600; font-size:13px; }
 QPushButton,QComboBox { background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #102c43,stop:1 #061b2d); border:1px solid #38617d; border-radius:6px; padding:8px 12px; font-size:14px; }
 QPushButton:hover,QComboBox:hover { border-color:#5fdcff; background:#103c56; }
 QPushButton:focus,QComboBox:focus { border-color:#80dfff; }
@@ -51,4 +58,4 @@ QWidget#headerControls QPushButton#startButton:hover { background:#1a6049; borde
 QWidget#headerControls QPushButton#startButton:pressed { background:#0b352a; }
 QWidget#headerControls QPushButton#startButton:focus { border-color:#80dfff; }
 QWidget#headerControls QPushButton#startButton:disabled { background:#0a1b2a; border-color:#294154; color:#8399ac; }
-"""
+""".replace("@card_border", CARD_BORDER).replace("@card_radius", str(CARD_RADIUS))

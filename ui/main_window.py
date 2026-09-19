@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 
 from config.settings import APP_NAME, MINIMUM_SIZE, TAGLINE, WINDOW_SIZE
 from config.simulation_config import SIMULATION_DT
-from ui.theme import STYLE
+from ui.theme import STYLE, CARD_PADDING, CARD_HEADER_GAP
 from ui.widgets.hmi_icon import HmiIcon
 from ui.widgets.underground_view import UndergroundView
 from modules.safedig_vision.utility_detector import UtilityDetector
@@ -35,12 +35,12 @@ def make_panel(title: str, subtitle: str, message: str) -> QFrame:
     panel = QFrame()
     panel.setObjectName("panel")
     layout = QVBoxLayout(panel)
-    layout.setContentsMargins(16, 16, 16, 16)
-    layout.setSpacing(8)
+    layout.setContentsMargins(*CARD_PADDING)
+    layout.setSpacing(CARD_HEADER_GAP)
     heading = QLabel(title)
     heading.setObjectName("panelTitle")
     heading.setWordWrap(True)
-    heading_row=QHBoxLayout();heading_row.addWidget(HmiIcon("excavator",40));heading_row.addWidget(heading,1);layout.addLayout(heading_row)
+    heading_row=QHBoxLayout();heading_row.setSpacing(CARD_HEADER_GAP);heading_row.addWidget(HmiIcon("excavator",28));heading_row.addWidget(heading,1);layout.addLayout(heading_row)
     description = QLabel(subtitle)
     description.setObjectName("muted")
     description.setWordWrap(True)

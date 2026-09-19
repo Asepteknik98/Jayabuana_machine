@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QFrame,QGridLayout,QLabel
 from core.decision_engine import DecisionState
 
+from ui.theme import CARD_PADDING, CARD_GAP, CARD_BORDER, CARD_RADIUS
 from ui.status_style import COLORS
 
 ACTION_COLORS = {key: COLORS[key] for key in ("NORMAL","WARN","SLOW","VERIFY","RESTRICT")}
@@ -15,7 +16,7 @@ class StatusIndicator(QFrame):
         super().__init__()
         self.setObjectName("panel")
         self.presentation = False
-        layout=QGridLayout(self);layout.setContentsMargins(16,8,48,8);layout.setHorizontalSpacing(24);layout.setVerticalSpacing(4)
+        layout=QGridLayout(self);layout.setContentsMargins(CARD_PADDING[0],CARD_PADDING[1],48,CARD_PADDING[3]);layout.setHorizontalSpacing(24);layout.setVerticalSpacing(CARD_GAP)
         title=QLabel("AI Copilot Decision");title.setObjectName("panelTitle");layout.addWidget(title,0,0)
         subtitle=QLabel("Intelligent Safety Recommendation");subtitle.setObjectName("muted");layout.addWidget(subtitle,1,0)
         self.action_label=QLabel();self.action_label.setMinimumWidth(170);layout.addWidget(self.action_label,0,1,2,1)
@@ -41,7 +42,7 @@ class StatusIndicator(QFrame):
         self.action_label.setText("\u25cf  " + decision.action.value)
         self.accent=ACTION_COLORS[decision.action.value]
         tint=QColor(self.accent).darker(700).name()
-        self.setStyleSheet(f"QFrame#panel {{border:1px solid {self.accent};background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #03243a,stop:.35 {tint},stop:1 #001b2b);}}")
+        self.setStyleSheet(f"QFrame#panel {{border:1px solid {CARD_BORDER};border-left:2px solid {self.accent};border-radius:{CARD_RADIUS}px;background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #091e2e,stop:.35 {tint},stop:1 #091e2e);}}")
         self.update()
         self.action_label.setStyleSheet(f"color:{ACTION_COLORS[decision.action.value]};font-size:{26 if self.presentation else 18}px;font-weight:600;")
         self.message_label.setText(decision.message)

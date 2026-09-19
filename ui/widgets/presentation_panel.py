@@ -2,6 +2,7 @@
 from PySide6.QtCore import Qt,QRectF,QPointF
 from PySide6.QtGui import QPainter,QColor,QPen
 from PySide6.QtWidgets import QFrame,QVBoxLayout,QLabel,QWidget,QHBoxLayout,QGridLayout,QProgressBar,QStackedWidget,QSizePolicy
+from ui.theme import CARD_PADDING, CARD_GAP, CARD_HEADER_GAP
 from ui.widgets.hmi_icon import HmiIcon
 from ui.status_style import COLORS,metres,percent
 from visualization.gpr_wave import GPRWave
@@ -11,11 +12,11 @@ class StatusBadge(QLabel):
     def display(self,text,color=None):
         color=color or COLORS.get(text,COLORS["UNKNOWN"])
         self.setText(text)
-        self.setStyleSheet(f"color:{color};background:#003d38;border:1px solid {color};border-radius:12px;padding:4px 10px;font-size:13px;font-weight:600;")
+        self.setStyleSheet(f"color:{color};background:#102a36;border:1px solid #315165;border-radius:6px;padding:4px 10px;font-size:13px;font-weight:600;")
 
 class OperatorSilhouette(QWidget):
     def __init__(self):
-        super().__init__();self.setMinimumHeight(70);self.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
+        super().__init__();self.setObjectName("cardBody");self.setMinimumHeight(70);self.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
     def paintEvent(self,event):
         p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.translate(self.width()/2,self.height()/2);scale=min(self.width()/160,self.height()/100);p.scale(scale,scale)
@@ -30,8 +31,8 @@ class PresentationPanel(QFrame):
     def __init__(self,title):
         super().__init__();self.setObjectName("panel")
         self.domain="vision" if "Vision" in title else "precision" if "Precision" in title else "guardian"
-        layout=QVBoxLayout(self);layout.setContentsMargins(16,8,16,8);layout.setSpacing(4)
-        top=QHBoxLayout();top.addWidget(HmiIcon(self.domain,28));heading=QLabel(title);heading.setObjectName("panelTitle");top.addWidget(heading,1)
+        layout=QVBoxLayout(self);layout.setContentsMargins(*CARD_PADDING);layout.setSpacing(CARD_GAP)
+        top=QHBoxLayout();top.setSpacing(CARD_HEADER_GAP);top.addWidget(HmiIcon(self.domain,28));heading=QLabel(title);heading.setObjectName("panelTitle");top.addWidget(heading,1)
         self.badge=StatusBadge();top.addWidget(self.badge);layout.addLayout(top)
         self.source=QLabel();self.source.setObjectName("muted");self.source.setWordWrap(True);layout.addWidget(self.source)
         self.value=QLabel();self.value.setWordWrap(True);self.value.setObjectName("metric")
@@ -41,7 +42,7 @@ class PresentationPanel(QFrame):
             names=("Estimated Depth","Distance from Bucket","Detection Confidence")
         elif self.domain=="precision":names=("Target Depth","Current Depth","Remaining","Bucket Speed","Design Conflict")
         else:
-            self.visual=QStackedWidget();self.visual.addWidget(OperatorSilhouette())
+            self.visual=QStackedWidget();self.visual.setObjectName("cardVisual");self.visual.addWidget(OperatorSilhouette())
             names=("Fatigue Score","Attention","Status")
         self.guardian_bars={}
         grid=QGridLayout();grid.setHorizontalSpacing(8);grid.setVerticalSpacing(4)

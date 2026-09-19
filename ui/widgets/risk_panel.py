@@ -2,6 +2,7 @@
 
 from PySide6.QtWidgets import QFrame,QLabel,QVBoxLayout,QGridLayout,QScrollArea,QWidget,QProgressBar,QHBoxLayout
 from PySide6.QtCore import Qt
+from ui.theme import CARD_PADDING, CARD_GAP, CARD_HEADER_GAP
 from ui.widgets.hmi_icon import HmiIcon
 from core.risk_engine import RiskState
 from visualization.risk_gauge import RiskGauge,RISK_COLORS
@@ -12,13 +13,13 @@ class RiskPanel(QFrame):
         super().__init__()
         self.setObjectName("panel")
         outer=QVBoxLayout(self)
-        outer.setContentsMargins(8,4,8,4)
-        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
+        outer.setContentsMargins(*CARD_PADDING)
+        self.scroll=QScrollArea();self.scroll.setObjectName("riskScroll");self.scroll.viewport().setObjectName("riskViewport");self.scroll.setWidgetResizable(True);outer.addWidget(self.scroll)
         content=QWidget();content.setObjectName("riskContent");self.scroll.setWidget(content)
-        layout=QVBoxLayout(content);layout.setContentsMargins(0,0,0,0);layout.setSpacing(4)
+        layout=QVBoxLayout(content);layout.setContentsMargins(0,0,0,0);layout.setSpacing(CARD_GAP)
         title=QLabel("Multimodal AI Risk Engine");title.setWordWrap(True)
-        title.setObjectName("panelTitle");title.setStyleSheet("font-size:18px;");head=QHBoxLayout();head.addWidget(HmiIcon("risk",28));head.addWidget(title,1);layout.addLayout(head)
-        ring=QGridLayout();self.gauge=RiskGauge();ring.addWidget(self.gauge,0,0)
+        title.setObjectName("panelTitle");head=QHBoxLayout();head.setSpacing(CARD_HEADER_GAP);head.addWidget(HmiIcon("risk",28));head.addWidget(title,1);layout.addLayout(head)
+        ring=QGridLayout();ring.setContentsMargins(0,0,0,0);self.gauge=RiskGauge();ring.addWidget(self.gauge,0,0)
         self.score_label=QLabel("--");self.score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.score_label.setStyleSheet("font-size:48px;font-weight:700;")
         center=QVBoxLayout();center.setSpacing(0);center.addStretch();center.addWidget(self.score_label)
@@ -38,7 +39,7 @@ class RiskPanel(QFrame):
             self.bars[key]=(value,bar);layout.addLayout(line)
         self.data_label=QLabel();self.data_label.setWordWrap(True);self.data_label.setObjectName("muted")
         layout.addWidget(self.data_label)
-        self.breakdown=QWidget();grid=QGridLayout(self.breakdown);self.values={}
+        self.breakdown=QWidget();self.breakdown.setObjectName("cardBody");grid=QGridLayout(self.breakdown);self.values={}
         for row,(key,name) in enumerate((("utility","Utility Risk"),("confidence","Confidence Risk"),
                                         ("velocity","Velocity Risk"),("design","Design Conflict"),("fatigue","Fatigue"))):
             caption=QLabel(name);caption.setObjectName("muted");grid.addWidget(caption,row,0)

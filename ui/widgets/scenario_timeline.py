@@ -2,6 +2,7 @@
 from PySide6.QtCore import Signal, Qt, QRectF, QPointF
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QProgressBar, QButtonGroup,QFrame,QStyle
 from PySide6.QtGui import QColor, QPainter, QPen
+from ui.theme import CARD_PADDING, CARD_GAP, CARD_HEADER_GAP
 from simulation.scenario_manager import SCENARIO_DIRECTORY
 
 class TimelineCanvas(QWidget):
@@ -39,7 +40,7 @@ class ScenarioTimeline(QFrame):
         super().__init__()
         self.setObjectName("panel")
         self._event_signature = None
-        layout = QVBoxLayout(self);layout.setContentsMargins(12,8,12,8);layout.setSpacing(4)
+        layout = QVBoxLayout(self);layout.setContentsMargins(*CARD_PADDING);layout.setSpacing(CARD_GAP)
         self.controls=QWidget();self.controls.setObjectName("headerControls")
         row=QHBoxLayout(self.controls);row.setContentsMargins(0,0,0,0);row.setSpacing(16)
         mode_column=QVBoxLayout();mode_column.setSpacing(4)
@@ -81,8 +82,8 @@ class ScenarioTimeline(QFrame):
         for button,icon in ((self.start,QStyle.StandardPixmap.SP_MediaPlay),(self.pause,QStyle.StandardPixmap.SP_MediaPause),(self.reset,QStyle.StandardPixmap.SP_BrowserReload)):
             button.setIcon(self.style().standardIcon(icon));button.setFixedSize(100,38);action_row.addWidget(button)
         self.start.setObjectName("startButton")
-        info=QHBoxLayout();layout.addLayout(info)
-        caption=QLabel("Scenario Timeline");caption.setStyleSheet("font-size:15px;color:#99e6ff;font-weight:600;");info.addWidget(caption)
+        info=QHBoxLayout();info.setSpacing(CARD_HEADER_GAP);layout.addLayout(info)
+        caption=QLabel("Scenario Timeline");caption.setObjectName("panelTitle");info.addWidget(caption)
         self.time_label=QLabel();info.addWidget(self.time_label,1)
         self.next_label=QLabel();self.next_label.setObjectName("muted");info.addWidget(self.next_label)
         self.source_label = QLabel();self.source_label.setObjectName("muted");layout.addWidget(self.source_label)
