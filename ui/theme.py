@@ -8,6 +8,9 @@ CARD_RADIUS = 8
 STYLE = """
 QMainWindow, QWidget { background:#06111f; color:#eaf5ff; font-family:'Segoe UI'; font-size:15px; }
 QFrame#panel { background:#091e2e; border:1px solid @card_border; border-radius:@card_radiuspx; }
+QFrame#excavationWorkspace { background:#0b2234; border:1px solid #47738c; border-top:2px solid #65b9d0; border-radius:8px; }
+QFrame#excavationWorkspace QLabel#panelTitle { color:#d1f1ff; font-size:20px; font-weight:600; }
+QFrame#excavationWorkspace QLabel#muted { color:#a8c4d5; }
 QFrame#healthStrip { background:#071c2c; border:1px solid #234359; border-radius:8px; }
 QWidget#riskContent, QScrollArea#riskScroll, QWidget#riskViewport { background:#091e2e; border:none; }
 QWidget#cardBody, QStackedWidget#cardVisual { background:transparent; border:none; }

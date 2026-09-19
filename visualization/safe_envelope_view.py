@@ -28,9 +28,11 @@ def draw_safe_envelope(painter: QPainter, bounds: QRectF, envelope: EnvelopeStat
         painter.setPen(QPen(color, 2))
         painter.drawEllipse(center, radius, radius)
     if presentation:
+        painter.setPen(Qt.PenStyle.NoPen);painter.setBrush(QColor(6,24,38,220))
+        painter.drawRoundedRect(QRectF(16,16,340,72),6,6)
         painter.setPen(color)
-        font=painter.font();font.setPixelSize(15);painter.setFont(font)
-        painter.drawText(QPointF(28,45),"SAFE ENVELOPE / "+envelope.status.value)
+        font=painter.font();font.setPixelSize(max(15,round(13/max(scale,.01))));painter.setFont(font)
+        painter.drawText(QPointF(28,43),"SAFE ENVELOPE / "+envelope.status.value)
         painter.restore();return
     # No zone at a fabricated location when unavailable; show a gray legend.
     painter.setBrush(QColor("#0b1d2e"))

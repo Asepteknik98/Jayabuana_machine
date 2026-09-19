@@ -151,7 +151,10 @@ class MainWindow(QMainWindow):
         excavation_panel = make_panel(
             "Excavation View", "SIMULATED WORKSPACE / SIDE VIEW", "",
         )
+        excavation_panel.setObjectName("excavationWorkspace")
         excavation_layout = excavation_panel.layout()
+        excavation_layout.setContentsMargins(12, 12, 12, 12)
+        excavation_layout.setSpacing(8)
         placeholder = excavation_layout.takeAt(2).widget()
         placeholder.deleteLater()
         self.excavator_view = UndergroundView()

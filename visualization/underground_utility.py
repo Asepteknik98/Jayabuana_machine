@@ -30,13 +30,15 @@ def draw_utility(painter: QPainter, bounds: QRectF, state: SafeDigState, present
         painter.drawLine(bucket, point)
         if not presentation:painter.drawText((bucket + point) / 2 + QPointF(10,0),f"{utility.distance_to_bucket_m:.2f} m")
     if presentation:
-        font=painter.font();font.setPixelSize(15);painter.setFont(font)
+        font=painter.font();font.setPixelSize(max(15,round(13/max(scale,.01))));painter.setFont(font)
         color={"CLEAR":"#65daba","APPROACHING":"#ffb347","INSIDE":"#ff6060"}.get(state.envelope.status.value if state.envelope else "","#94aec3")
         painter.setPen(QColor(color))
         distance=f"{utility.distance_to_bucket_m:.2f} m" if utility.distance_to_bucket_m is not None else "N/A"
         painter.drawText(QPointF(28,72),"BUCKET TO UTILITY  "+distance)
-        painter.setPen(QColor("#68deeb"))
-        painter.drawText(QPointF(28,470),f"UTILITY DEPTH  {utility.estimated_depth_m:.2f} m")
+        painter.setPen(Qt.PenStyle.NoPen);painter.setBrush(QColor(6,24,38,225))
+        painter.drawRoundedRect(QRectF(16,468,262,36),5,5)
+        painter.setPen(QColor("#8ae4f0"))
+        painter.drawText(QPointF(28,491),f"UTILITY DEPTH  {utility.estimated_depth_m:.2f} m")
         painter.restore();return
     # Fixed legend avoids clipping long labels near the edge of the scene.
     painter.fillRect(QRectF(16, 350, 310, 115), QColor("#0b1d2e"))
